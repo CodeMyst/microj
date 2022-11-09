@@ -1,0 +1,38 @@
+program Eratos
+
+	char[] sieve;
+	int max;		// maximum prime to be found
+	int npp;		// numbers per page
+
+{
+	void put(int x)
+	{
+		if (npp == 10) {print(chr(13)); print(chr(10)); npp = 0;}
+		print(x, 5);
+		npp++;
+	}
+
+	void found(int x)
+		int i;
+	{
+		put(x);
+		i = x;
+		while (i <= max) {sieve[i] = 'o'; i = i + x;}
+	}
+
+	void main()
+		int i;
+	{
+		read(max);
+		npp = 0;
+		sieve = new char[max+1];
+		i = 0;
+		while (i <= max) {sieve[i] = 'x'; i++;}
+		i = 2;
+		while (i <= max) {
+			found(i);
+			while(i <= max && sieve[i] == 'o') i++;
+		}
+	}
+
+}//test
