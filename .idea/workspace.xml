@@ -5,11 +5,17 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="3efb25cc-99dc-4964-9d51-30aa5adf4db6" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/src/main/resources/Sample0.mj" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/resources/Sample1.mj" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/resources/Sample2.mj" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/resources/Sample3.mj" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/uiDesigner.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/rs/myst/Scanner.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/rs/myst/Token.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/rs/myst/TokenKind.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/test/java/rs/myst/ScannerTest.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/build.gradle" beforeDir="false" afterPath="$PROJECT_DIR$/build.gradle" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/rs/myst/Adder.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/rs/myst/Main.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/rs/myst/Main.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/Sample2.mj" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/resources/Sample2.mj" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/test/java/rs/myst/AdderTest.java" beforeDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -61,6 +67,7 @@
   <component name="FileTemplateManagerImpl">
     <option name="RECENT_TEMPLATES">
       <list>
+        <option value="Enum" />
         <option value="Class" />
         <option value="JUnit5 Test Class" />
       </list>
@@ -78,16 +85,17 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;WebServerToolWindowFactoryState&quot;: &quot;false&quot;,
-    &quot;com.intellij.testIntegration.createTest.CreateTestDialog.defaultLibrary&quot;: &quot;JUnit5&quot;,
-    &quot;com.intellij.testIntegration.createTest.CreateTestDialog.defaultLibrarySuperClass.JUnit5&quot;: &quot;&quot;,
-    &quot;create.test.in.the.same.root&quot;: &quot;true&quot;,
-    &quot;last_directory_selection&quot;: &quot;/home/code/work/microj/src/test/java&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;editor.preferences.fonts.default&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "SHARE_PROJECT_CONFIGURATION_FILES": "true",
+    "WebServerToolWindowFactoryState": "false",
+    "com.intellij.testIntegration.createTest.CreateTestDialog.defaultLibrary": "JUnit5",
+    "com.intellij.testIntegration.createTest.CreateTestDialog.defaultLibrarySuperClass.JUnit5": "",
+    "create.test.in.the.same.root": "true",
+    "last_directory_selection": "/home/code/work/microj/src/test/java/rs/myst",
+    "settings.editor.selected.configurable": "editor.preferences.fonts.default"
   }
-}</component>
+}]]></component>
   <component name="RecentsManager">
     <key name="CreateTestDialog.Recents.Supers">
       <recent name="" />
@@ -96,7 +104,7 @@
       <recent name="rs.myst" />
     </key>
   </component>
-  <component name="RunManager" selected="Gradle.microj [build]">
+  <component name="RunManager" selected="JUnit.Test">
     <configuration name="Run" type="Application" factoryName="Application">
       <option name="ALTERNATIVE_JRE_PATH" value="17" />
       <option name="ALTERNATIVE_JRE_PATH_ENABLED" value="true" />
@@ -183,6 +191,7 @@
       <updated>1668020495286</updated>
       <workItem from="1668020499614" duration="99000" />
       <workItem from="1668020611997" duration="2055000" />
+      <workItem from="1668022685024" duration="11764000" />
     </task>
     <servers />
   </component>

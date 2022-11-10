@@ -1,0 +1,50 @@
+package rs.myst;
+
+public enum TokenKind {
+    INVALID,
+
+    IDENTIFIER,
+    NUMBER,
+    CHAR,
+
+    PLUS,
+    MINUS,
+    TIMES,
+    SLASH,
+    MODULO,
+    EQUALS,
+    NOT_EQUALS,
+    LESS,
+    LESS_EQUAL,
+    GREATER,
+    GREATER_EQUAL,
+    AND,
+    OR,
+    ASSIGN,
+    PLUS_PLUS,
+    MINUS_MINUS,
+    SEMICOLON,
+    COMMA,
+    PERIOD,
+    LEFT_PARENS,
+    RIGHT_PARENS,
+    LEFT_BRACKET,
+    RIGHT_BRACKET,
+    LEFT_BRACE,
+    RIGHT_BRACE,
+
+    BREAK,
+    CLASS,
+    ELSE,
+    FINAL,
+    IF,
+    NEW,
+    PRINT,
+    PROGRAM,
+    READ,
+    RETURN,
+    VOID,
+    WHILE,
+
+    EOF
+}
