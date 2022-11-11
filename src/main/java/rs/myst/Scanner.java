@@ -21,7 +21,7 @@ public class Scanner {
     }
 
     public boolean hasNext() {
-        return !reachedEOF && lastToken.getKind() != TokenKind.INVALID;
+        return lastToken.getKind() != TokenKind.INVALID && lastToken.getKind() != TokenKind.EOF;
     }
 
     public Token next() {
