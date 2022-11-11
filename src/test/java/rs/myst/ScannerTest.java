@@ -2,6 +2,7 @@ package rs.myst;
 
 import org.junit.jupiter.api.Test;
 
+import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.net.URL;
@@ -32,6 +33,26 @@ class ScannerTest {
 
                 assertEquals(TokenKind.EOF, token.getKind());
             }
+        }
+    }
+
+    @Test
+    void invalidSampleFiles() throws IOException {
+        final ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
+
+        final URL sampleFile = classLoader.getResource("Invalid0.mj");
+
+        assert sampleFile != null;
+
+        try (FileReader reader = new FileReader(sampleFile.getPath())) {
+            Scanner scanner = new Scanner(reader);
+
+            Token token;
+            do {
+                token = scanner.next();
+            } while (scanner.hasNext());
+
+            assertEquals(TokenKind.INVALID, token.getKind());
         }
     }
 }
