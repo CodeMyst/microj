@@ -85,7 +85,7 @@ public class Scanner {
         } else if (nextChar == '&') {
             getNextChar();
 
-            if (nextChar == '&') {
+            if (!reachedEOF && nextChar == '&') {
                 getNextChar();
                 t.setKind(TokenKind.AND);
             } else {
@@ -94,7 +94,7 @@ public class Scanner {
         } else if (nextChar == '|') {
             getNextChar();
 
-            if (nextChar == '|') {
+            if (!reachedEOF && nextChar == '|') {
                 getNextChar();
                 t.setKind(TokenKind.OR);
             } else {
@@ -103,7 +103,7 @@ public class Scanner {
         } else if (nextChar == '+') {
             getNextChar();
 
-            if (nextChar == '+') {
+            if (!reachedEOF && nextChar == '+') {
                 getNextChar();
                 t.setKind(TokenKind.PLUS_PLUS);
             } else {
@@ -112,7 +112,7 @@ public class Scanner {
         } else if (nextChar == '-') {
             getNextChar();
 
-            if (nextChar == '-') {
+            if (!reachedEOF && nextChar == '-') {
                 getNextChar();
                 t.setKind(TokenKind.MINUS_MINUS);
             } else {
@@ -121,7 +121,7 @@ public class Scanner {
         } else if (nextChar == '!') {
             getNextChar();
 
-            if (nextChar == '=') {
+            if (!reachedEOF && nextChar == '=') {
                 getNextChar();
                 t.setKind(TokenKind.NOT_EQUALS);
             } else {
@@ -130,7 +130,7 @@ public class Scanner {
         } else if (nextChar == '<') {
             getNextChar();
 
-            if (nextChar == '=') {
+            if (!reachedEOF && nextChar == '=') {
                 getNextChar();
                 t.setKind(TokenKind.LESS);
             } else {
@@ -139,7 +139,7 @@ public class Scanner {
         } else if (nextChar == '>') {
             getNextChar();
 
-            if (nextChar == '=') {
+            if (!reachedEOF && nextChar == '=') {
                 getNextChar();
                 t.setKind(TokenKind.GREATER);
             } else {
@@ -148,14 +148,14 @@ public class Scanner {
         } else if (nextChar == '\'') {
             getNextChar();
 
-            if (nextChar == '\'') {
+            if (!reachedEOF && nextChar == '\'') {
                 t.setKind(TokenKind.INVALID);
             } else {
                 char c = nextChar;
 
                 getNextChar();
 
-                if (nextChar == '\'') {
+                if (!reachedEOF && nextChar == '\'') {
                     getNextChar();
 
                     t.setKind(TokenKind.CHAR);
@@ -167,7 +167,7 @@ public class Scanner {
         } else if (nextChar == '/') {
             getNextChar();
 
-            if (nextChar == '/') {
+            if (!reachedEOF && nextChar == '/') {
                 do {
                     getNextChar();
                     // TODO: Deal with \r\n line separators
@@ -193,7 +193,7 @@ public class Scanner {
         do {
             getNextChar();
             sb.append(nextChar);
-        } while (Character.isLetter(nextChar) || Character.isDigit(nextChar) || nextChar == '_');
+        } while (!reachedEOF && Character.isLetter(nextChar) || Character.isDigit(nextChar) || nextChar == '_');
 
         sb.deleteCharAt(sb.length() - 1);
 
@@ -229,7 +229,7 @@ public class Scanner {
         do {
             getNextChar();
             sb.append(nextChar);
-        } while (Character.isDigit(nextChar));
+        } while (!reachedEOF && Character.isDigit(nextChar));
 
         sb.deleteCharAt(sb.length() - 1);
 

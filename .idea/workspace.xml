@@ -5,9 +5,10 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="3efb25cc-99dc-4964-9d51-30aa5adf4db6" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/src/main/resources/Invalid0.mj" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/rs/myst/Main.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/rs/myst/Main.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/rs/myst/Scanner.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/rs/myst/Scanner.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/resources/Sample2.mj" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/resources/Sample2.mj" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -96,7 +97,7 @@
       <recent name="rs.myst" />
     </key>
   </component>
-  <component name="RunManager" selected="JUnit.Test">
+  <component name="RunManager" selected="Application.Run">
     <configuration name="Run" type="Application" factoryName="Application">
       <option name="ALTERNATIVE_JRE_PATH" value="17" />
       <option name="ALTERNATIVE_JRE_PATH_ENABLED" value="true" />
@@ -105,48 +106,6 @@
       <method v="2">
         <option name="Make" enabled="true" />
       </method>
-    </configuration>
-    <configuration name="microj [build]" type="GradleRunConfiguration" factoryName="Gradle" temporary="true">
-      <ExternalSystemSettings>
-        <option name="executionName" />
-        <option name="externalProjectPath" value="$PROJECT_DIR$" />
-        <option name="externalSystemIdString" value="GRADLE" />
-        <option name="scriptParameters" />
-        <option name="taskDescriptions">
-          <list />
-        </option>
-        <option name="taskNames">
-          <list>
-            <option value="build" />
-          </list>
-        </option>
-        <option name="vmOptions" />
-      </ExternalSystemSettings>
-      <ExternalSystemDebugServerProcess>true</ExternalSystemDebugServerProcess>
-      <ExternalSystemReattachDebugProcess>true</ExternalSystemReattachDebugProcess>
-      <DebugAllEnabled>false</DebugAllEnabled>
-      <method v="2" />
-    </configuration>
-    <configuration name="microj [test]" type="GradleRunConfiguration" factoryName="Gradle" temporary="true">
-      <ExternalSystemSettings>
-        <option name="executionName" />
-        <option name="externalProjectPath" value="$PROJECT_DIR$" />
-        <option name="externalSystemIdString" value="GRADLE" />
-        <option name="scriptParameters" />
-        <option name="taskDescriptions">
-          <list />
-        </option>
-        <option name="taskNames">
-          <list>
-            <option value="test" />
-          </list>
-        </option>
-        <option name="vmOptions" />
-      </ExternalSystemSettings>
-      <ExternalSystemDebugServerProcess>true</ExternalSystemDebugServerProcess>
-      <ExternalSystemReattachDebugProcess>true</ExternalSystemReattachDebugProcess>
-      <DebugAllEnabled>false</DebugAllEnabled>
-      <method v="2" />
     </configuration>
     <configuration name="Test" type="JUnit" factoryName="JUnit">
       <module name="microj.test" />
@@ -162,16 +121,8 @@
     </configuration>
     <list>
       <item itemvalue="Application.Run" />
-      <item itemvalue="Gradle.microj [build]" />
-      <item itemvalue="Gradle.microj [test]" />
       <item itemvalue="JUnit.Test" />
     </list>
-    <recent_temporary>
-      <list>
-        <item itemvalue="Gradle.microj [build]" />
-        <item itemvalue="Gradle.microj [test]" />
-      </list>
-    </recent_temporary>
   </component>
   <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
   <component name="TaskManager">
@@ -184,7 +135,7 @@
       <workItem from="1668020499614" duration="99000" />
       <workItem from="1668020611997" duration="2055000" />
       <workItem from="1668022685024" duration="12362000" />
-      <workItem from="1668170521790" duration="682000" />
+      <workItem from="1668170521790" duration="1969000" />
     </task>
     <servers />
   </component>
