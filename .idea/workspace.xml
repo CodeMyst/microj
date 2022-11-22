@@ -6,8 +6,6 @@
   <component name="ChangeListManager">
     <list default="true" id="3efb25cc-99dc-4964-9d51-30aa5adf4db6" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/resources/Invalid0.mj" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/resources/Invalid0.mj" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/test/java/rs/myst/ScannerTest.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/test/java/rs/myst/ScannerTest.java" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -72,7 +70,9 @@
     <option name="stateVersion" value="1" />
   </component>
   <component name="ProjectId" id="2HK4Yp4HtXdskNE0nG24uoYyN8B" />
-  <component name="ProjectLevelVcsManager" settingsEditedManually="true" />
+  <component name="ProjectLevelVcsManager" settingsEditedManually="true">
+    <ConfirmationsSetting value="2" id="Add" />
+  </component>
   <component name="ProjectViewState">
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
@@ -135,6 +135,7 @@
       <workItem from="1668020611997" duration="2055000" />
       <workItem from="1668022685024" duration="12362000" />
       <workItem from="1668170521790" duration="2118000" />
+      <workItem from="1669148319988" duration="295000" />
     </task>
     <servers />
   </component>
