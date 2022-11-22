@@ -7,7 +7,7 @@ import java.net.URL;
 public class Main {
     public static void main(String[] args) throws IOException {
         final ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
-        final URL sampleUrl = classLoader.getResource("Sample4.mj");
+        final URL sampleUrl = classLoader.getResource("Sample1.mj");
 
         if (sampleUrl == null) {
             System.out.println("File not found");
