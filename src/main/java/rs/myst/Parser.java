@@ -350,6 +350,7 @@ public class Parser {
         conditionTerm();
 
         while (next(TokenKind.OR)) {
+            check(TokenKind.OR);
             conditionTerm();
         }
     }
@@ -360,6 +361,7 @@ public class Parser {
         conditionFact();
 
         while (next(TokenKind.AND)) {
+            check(TokenKind.AND);
             conditionFact();
         }
     }

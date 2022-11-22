@@ -132,9 +132,9 @@ public class Scanner {
 
             if (!reachedEOF && nextChar == '=') {
                 getNextChar();
-                t.setKind(TokenKind.LESS);
-            } else {
                 t.setKind(TokenKind.LESS_EQUAL);
+            } else {
+                t.setKind(TokenKind.LESS);
             }
         } else if (nextChar == '>') {
             getNextChar();
