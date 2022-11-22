@@ -7,7 +7,7 @@ import java.net.URL;
 public class Main {
     public static void main(String[] args) throws IOException {
         final ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
-        final URL sampleUrl = classLoader.getResource("Invalid0.mj");
+        final URL sampleUrl = classLoader.getResource("Sample0.mj");
 
         if (sampleUrl == null) {
             System.out.println("File not found");
@@ -17,12 +17,16 @@ public class Main {
         try (FileReader reader = new FileReader(sampleUrl.getPath())) {
             final Scanner scanner = new Scanner(reader);
 
-            Token token;
-            do {
-                token = scanner.next();
+            final Parser parser = new Parser(scanner);
 
-                System.out.println(token.toString());
-            } while (scanner.hasNext());
+            parser.parse();
+
+//            Token token;
+//            do {
+//                token = scanner.next();
+//
+//                System.out.println(token.toString());
+//            } while (scanner.hasNext());
         }
     }
 }
