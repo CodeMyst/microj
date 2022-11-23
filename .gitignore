@@ -16,6 +16,7 @@ out/
 !**/src/main/**/out/
 !**/src/test/**/out/
 .idea/discord.xml
+.idea/workspace.xml
 
 ### Eclipse ###
 .apt_generated
