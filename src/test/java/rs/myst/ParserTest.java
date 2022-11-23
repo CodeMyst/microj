@@ -28,6 +28,8 @@ class ParserTest {
                 Parser parser = new Parser(scanner);
 
                 parser.parse();
+
+                assertTrue(parser.parsedSuccessfully());
             }
         }
     }

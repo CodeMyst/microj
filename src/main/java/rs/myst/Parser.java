@@ -1,9 +1,34 @@
 package rs.myst;
 
+import java.util.EnumSet;
+import java.util.Set;
+
+import static rs.myst.TokenKind.*;
+
 public class Parser {
+    // how far away from the last error token we have to be to report new errors
+    private final int ERROR_DISTANCE_THRESHOLD = 3;
+
     private final Scanner scanner;
 
     private Token nextToken;
+
+    private int errorCount = 0;
+    // current error distance from the last errored token
+    private int errorDistance = ERROR_DISTANCE_THRESHOLD;
+
+    // list of all token kinds that a statement can start with
+    // makes it easier to do checks
+    private final Set<TokenKind> statementFirstTokens = EnumSet.of(
+            IDENTIFIER,
+            IF,
+            WHILE,
+            BREAK,
+            RETURN,
+            READ,
+            PRINT,
+            LEFT_BRACE,
+            SEMICOLON);
 
     public Parser(Scanner scanner) {
         this.scanner = scanner;
@@ -14,12 +39,20 @@ public class Parser {
 
         program();
 
-        check(TokenKind.EOF);
+        check(EOF);
+    }
+
+    public int getErrorCount() {
+        return errorCount;
+    }
+
+    public boolean parsedSuccessfully() {
+        return errorCount == 0;
     }
 
     private void scan() {
-        // TODO: Check if token valid
         nextToken = scanner.next();
+        errorDistance++;
     }
 
     private void check(TokenKind expected) {
@@ -34,56 +67,62 @@ public class Parser {
         return nextToken.getKind() == kind;
     }
 
-    private void error(String message) {
-        // TODO: Better error handling
-        System.out.println("line: " + nextToken.getLine() + ", col: " + nextToken.getCol() + ": " + message);
+    private boolean nextOf(Set<TokenKind> kinds) {
+        return kinds.contains(nextToken.getKind());
+    }
 
-        System.exit(1);
+    private void error(String message) {
+        if (errorDistance >= ERROR_DISTANCE_THRESHOLD) {
+            System.out.println("line " + nextToken.getLine() + ", col " + nextToken.getCol() + ": " + message);
+            errorCount++;
+        }
+
+        errorDistance = 0;
     }
 
     private void program() {
         // "program" identifier {constDeclaration | varDeclaration | classDeclaration} "{" {methodDeclaration} "}"
 
-        check(TokenKind.PROGRAM);
-        check(TokenKind.IDENTIFIER);
+        check(PROGRAM);
+        check(IDENTIFIER);
 
-        while (next(TokenKind.FINAL) || next(TokenKind.IDENTIFIER) || next(TokenKind.CLASS)) {
-            if (next(TokenKind.FINAL)) {
+        while (next(FINAL) || next(IDENTIFIER) || next(CLASS)) {
+            if (next(FINAL)) {
                 constDeclaration();
-            } else if (next(TokenKind.IDENTIFIER)) {
+            } else if (next(IDENTIFIER)) {
                 varDeclaration();
             } else {
                 classDeclaration();
             }
         }
 
-        check(TokenKind.LEFT_BRACE);
-        while (next(TokenKind.IDENTIFIER) || next(TokenKind.VOID)) {
+        check(LEFT_BRACE);
+        while (next(IDENTIFIER) || next(VOID)) {
             methodDeclaration();
         }
-        check(TokenKind.RIGHT_BRACE);
+        check(RIGHT_BRACE);
     }
 
     private void methodDeclaration() {
         // (type | "void") identifier "(" [formParams] ")" {varDeclaration} block
 
-        if (next(TokenKind.VOID)) {
+        if (next(VOID)) {
             scan();
         } else {
             type();
         }
 
-        check(TokenKind.IDENTIFIER);
+        check(IDENTIFIER);
 
-        check(TokenKind.LEFT_PARENS);
+        check(LEFT_PARENS);
         // should be a type
-        if (next(TokenKind.IDENTIFIER)) {
+        if (next(IDENTIFIER)) {
             formParams();
         }
-        check(TokenKind.RIGHT_PARENS);
+        check(RIGHT_PARENS);
 
         // should be a type
-        while (next(TokenKind.IDENTIFIER)) {
+        while (next(IDENTIFIER)) {
             varDeclaration();
         }
 
@@ -94,60 +133,65 @@ public class Parser {
         // type identifier {"," type identifier}
 
         type();
-        check(TokenKind.IDENTIFIER);
+        check(IDENTIFIER);
 
-        while (next(TokenKind.COMMA)) {
+        while (next(COMMA)) {
             scan();
             type();
-            check(TokenKind.IDENTIFIER);
+            check(IDENTIFIER);
         }
     }
 
     private void designator() {
         // identifier {"." identifier | "[" Expression "]"}
 
-        check(TokenKind.IDENTIFIER);
+        check(IDENTIFIER);
 
-        while (next(TokenKind.PERIOD) || next(TokenKind.LEFT_BRACKET)) {
-            if (next(TokenKind.PERIOD)) {
+        while (next(PERIOD) || next(LEFT_BRACKET)) {
+            if (next(PERIOD)) {
                 scan();
-                check(TokenKind.IDENTIFIER);
+                check(IDENTIFIER);
             } else {
-                check(TokenKind.LEFT_BRACKET);
+                check(LEFT_BRACKET);
                 expression();
-                check(TokenKind.RIGHT_BRACKET);
+                check(RIGHT_BRACKET);
             }
         }
     }
 
     private void type() {
-        check(TokenKind.IDENTIFIER);
+        check(IDENTIFIER);
 
-        if (next(TokenKind.LEFT_BRACKET)) {
+        if (next(LEFT_BRACKET)) {
             scan();
-            check(TokenKind.RIGHT_BRACKET);
+            check(RIGHT_BRACKET);
         }
     }
 
     private void block() {
         // "{" {statement} "}"
 
-        check(TokenKind.LEFT_BRACE);
+        check(LEFT_BRACE);
 
-        while (next(TokenKind.IDENTIFIER) ||
-               next(TokenKind.IF) ||
-               next(TokenKind.WHILE) ||
-               next(TokenKind.BREAK) ||
-               next(TokenKind.RETURN) ||
-               next(TokenKind.READ) ||
-               next(TokenKind.PRINT) ||
-               next(TokenKind.LEFT_BRACE) ||
-               next(TokenKind.SEMICOLON)) {
+        while (true) {
+            if (nextOf(statementFirstTokens)) {
+                statement();
+            } else if (next(RIGHT_BRACE) || next(EOF)) {
+                break;
+            } else {
+                error("invalid start of a statement");
+                do {
+                    scan();
+                } while (!nextOf(statementFirstTokens) && !next(EOF));
+                errorDistance = 0;
+            }
+        }
 
+        while (nextOf(statementFirstTokens)) {
             statement();
         }
 
-        check(TokenKind.RIGHT_BRACE);
+        check(RIGHT_BRACE);
     }
 
     private void statement() {
@@ -161,187 +205,181 @@ public class Parser {
         // block |
         // ";"
 
-        if (next(TokenKind.IDENTIFIER)) {
+        if (next(IDENTIFIER)) {
             designator();
 
-            if (next(TokenKind.ASSIGN)) {
+            if (next(ASSIGN)) {
                 scan();
                 expression();
-                check(TokenKind.SEMICOLON);
-            } else if (next(TokenKind.LEFT_PARENS)) {
+                check(SEMICOLON);
+            } else if (next(LEFT_PARENS)) {
                 scan();
 
-                if (next(TokenKind.MINUS) ||
-                    next(TokenKind.IDENTIFIER) ||
-                    next(TokenKind.NUMBER) ||
-                    next(TokenKind.CHAR) ||
-                    next(TokenKind.NEW) ||
-                    next(TokenKind.LEFT_PARENS)) {
+                if (next(MINUS) ||
+                    next(IDENTIFIER) ||
+                    next(NUMBER) ||
+                    next(CHAR) ||
+                    next(NEW) ||
+                    next(LEFT_PARENS)) {
 
                     actParams();
                 }
 
-                check(TokenKind.RIGHT_PARENS);
-                check(TokenKind.SEMICOLON);
-            } else if (next(TokenKind.PLUS_PLUS)) {
+                check(RIGHT_PARENS);
+                check(SEMICOLON);
+            } else if (next(PLUS_PLUS)) {
                 scan();
-                check(TokenKind.SEMICOLON);
+                check(SEMICOLON);
             } else {
-                check(TokenKind.MINUS_MINUS);
-                check(TokenKind.SEMICOLON);
+                check(MINUS_MINUS);
+                check(SEMICOLON);
             }
-        } else if (next(TokenKind.IF)) {
+        } else if (next(IF)) {
             scan();
-            check(TokenKind.LEFT_PARENS);
+            check(LEFT_PARENS);
             condition();
-            check(TokenKind.RIGHT_PARENS);
+            check(RIGHT_PARENS);
 
             statement();
 
-            if (next(TokenKind.ELSE)) {
+            if (next(ELSE)) {
                 scan();
                 statement();
             }
-        } else if (next(TokenKind.WHILE)) {
+        } else if (next(WHILE)) {
             scan();
-            check(TokenKind.LEFT_PARENS);
+            check(LEFT_PARENS);
             condition();
-            check(TokenKind.RIGHT_PARENS);
+            check(RIGHT_PARENS);
 
             statement();
-        } else if (next(TokenKind.BREAK)) {
+        } else if (next(BREAK)) {
             scan();
-            check(TokenKind.SEMICOLON);
-        } else if (next(TokenKind.RETURN)) {
+            check(SEMICOLON);
+        } else if (next(RETURN)) {
             scan();
 
-            if (next(TokenKind.MINUS) ||
-                next(TokenKind.IDENTIFIER) ||
-                next(TokenKind.NUMBER) ||
-                next(TokenKind.CHAR) ||
-                next(TokenKind.NEW) ||
-                next(TokenKind.LEFT_PARENS)) {
+            if (next(MINUS) ||
+                next(IDENTIFIER) ||
+                next(NUMBER) ||
+                next(CHAR) ||
+                next(NEW) ||
+                next(LEFT_PARENS)) {
 
                 expression();
             }
 
-            check(TokenKind.SEMICOLON);
-        } else if (next(TokenKind.READ)) {
+            check(SEMICOLON);
+        } else if (next(READ)) {
             scan();
-            check(TokenKind.LEFT_PARENS);
+            check(LEFT_PARENS);
             designator();
-            check(TokenKind.RIGHT_PARENS);
-            check(TokenKind.SEMICOLON);
-        } else if (next(TokenKind.PRINT)) {
+            check(RIGHT_PARENS);
+            check(SEMICOLON);
+        } else if (next(PRINT)) {
             scan();
-            check(TokenKind.LEFT_PARENS);
+            check(LEFT_PARENS);
 
             expression();
 
-            if (next(TokenKind.COMMA)) {
+            if (next(COMMA)) {
                 scan();
-                check(TokenKind.NUMBER);
+                check(NUMBER);
             }
 
-            check(TokenKind.RIGHT_PARENS);
-            check(TokenKind.SEMICOLON);
-        } else if (next(TokenKind.IDENTIFIER) ||
-                   next(TokenKind.IF) ||
-                   next(TokenKind.WHILE) ||
-                   next(TokenKind.BREAK) ||
-                   next(TokenKind.RETURN) ||
-                   next(TokenKind.READ) ||
-                   next(TokenKind.PRINT) ||
-                   next(TokenKind.LEFT_BRACE) ||
-                   next(TokenKind.SEMICOLON)) {
+            check(RIGHT_PARENS);
+            check(SEMICOLON);
+        } else if (next(LEFT_BRACE)) {
             block();
         } else {
-            check(TokenKind.SEMICOLON);
+            check(SEMICOLON);
         }
     }
 
     private void constDeclaration() {
         // "final" type identifier "=" (number | charConst) ";"
 
-        check(TokenKind.FINAL);
+        check(FINAL);
         type();
-        check(TokenKind.IDENTIFIER);
-        check(TokenKind.ASSIGN);
+        check(IDENTIFIER);
+        check(ASSIGN);
 
-        if (next(TokenKind.NUMBER)) {
+        if (next(NUMBER)) {
             scan();
         } else {
-            check(TokenKind.CHAR);
+            check(CHAR);
         }
 
-        check(TokenKind.SEMICOLON);
+        check(SEMICOLON);
     }
 
     private void varDeclaration() {
         // type identifier {"," identifier} ";"
 
         type();
-        check(TokenKind.IDENTIFIER);
+        check(IDENTIFIER);
 
-        while (next(TokenKind.COMMA)) {
+        while (next(COMMA)) {
             scan();
-            check(TokenKind.IDENTIFIER);
+            check(IDENTIFIER);
         }
 
-        check(TokenKind.SEMICOLON);
+        check(SEMICOLON);
     }
 
     private void classDeclaration() {
         // "class" identifier "{" {varDeclaration} "}"
 
-        check(TokenKind.CLASS);
-        check(TokenKind.IDENTIFIER);
-        check(TokenKind.LEFT_BRACE);
+        check(CLASS);
+        check(IDENTIFIER);
+        check(LEFT_BRACE);
 
-        while (next(TokenKind.IDENTIFIER)) {
+        while (next(IDENTIFIER)) {
             varDeclaration();
         }
 
-        check(TokenKind.RIGHT_BRACE);
+        check(RIGHT_BRACE);
     }
 
     private void relOp() {
         // "==" | "!=" | ">" | ">=" | "<" | "<="
 
-        if (next(TokenKind.EQUALS)) {
+        if (next(EQUALS)) {
             scan();
-        } else if (next(TokenKind.NOT_EQUALS)) {
+        } else if (next(NOT_EQUALS)) {
             scan();
-        } else if (next(TokenKind.GREATER)) {
+        } else if (next(GREATER)) {
             scan();
-        } else if (next(TokenKind.GREATER_EQUAL)) {
+        } else if (next(GREATER_EQUAL)) {
             scan();
-        } else if (next(TokenKind.LESS)) {
+        } else if (next(LESS)) {
+            scan();
+        } else if (next(LESS)) {
             scan();
         } else {
-            check(TokenKind.LESS_EQUAL);
+            error("expected a relational operator, got: " + nextToken.getKind());
         }
     }
 
     private void addOp() {
         // "+" | "-"
 
-        if (next(TokenKind.PLUS)) {
+        if (next(PLUS)) {
             scan();
         } else {
-            check(TokenKind.MINUS);
+            check(MINUS);
         }
     }
 
     private void mulOp() {
         // "*" | "/" | "%"
 
-        if (next(TokenKind.TIMES)) {
+        if (next(TIMES)) {
             scan();
-        } else if (next(TokenKind.SLASH)) {
+        } else if (next(SLASH)) {
             scan();
         } else {
-            check(TokenKind.MODULO);
+            check(MODULO);
         }
     }
 
@@ -350,7 +388,7 @@ public class Parser {
 
         conditionTerm();
 
-        while (next(TokenKind.OR)) {
+        while (next(OR)) {
             scan();
             conditionTerm();
         }
@@ -361,7 +399,7 @@ public class Parser {
 
         conditionFact();
 
-        while (next(TokenKind.AND)) {
+        while (next(AND)) {
             scan();
             conditionFact();
         }
@@ -380,13 +418,13 @@ public class Parser {
     private void expression() {
         // ["-"] term {addOp term}
 
-        if (next(TokenKind.MINUS)) {
+        if (next(MINUS)) {
             scan();
         }
 
         term();
 
-        while (next(TokenKind.PLUS) || next(TokenKind.MINUS)) {
+        while (next(PLUS) || next(MINUS)) {
             addOp();
 
             term();
@@ -398,7 +436,7 @@ public class Parser {
 
         factor();
 
-        while (next(TokenKind.TIMES) || next(TokenKind.SLASH) || next(TokenKind.MODULO)) {
+        while (next(TIMES) || next(SLASH) || next(MODULO)) {
             mulOp();
 
             factor();
@@ -408,41 +446,43 @@ public class Parser {
     private void factor() {
         // designator ["(" [actParams] ")"] | number | charConst | "new" identifier ["[" expression "]"] | "(" expression ")"
 
-        if (next(TokenKind.IDENTIFIER)) {
+        if (next(IDENTIFIER)) {
             designator();
 
-            if (next(TokenKind.LEFT_PARENS)) {
+            if (next(LEFT_PARENS)) {
                 scan();
 
-                if (next(TokenKind.MINUS) ||
-                    next(TokenKind.IDENTIFIER) ||
-                    next(TokenKind.NUMBER) ||
-                    next(TokenKind.CHAR) ||
-                    next(TokenKind.NEW) ||
-                    next(TokenKind.LEFT_PARENS)) {
+                if (next(MINUS) ||
+                    next(IDENTIFIER) ||
+                    next(NUMBER) ||
+                    next(CHAR) ||
+                    next(NEW) ||
+                    next(LEFT_PARENS)) {
 
                     actParams();
                 }
 
-                check(TokenKind.RIGHT_PARENS);
+                check(RIGHT_PARENS);
             }
-        } else if (next(TokenKind.NUMBER)) {
+        } else if (next(NUMBER)) {
             scan();
-        } else if (next(TokenKind.CHAR)) {
+        } else if (next(CHAR)) {
             scan();
-        } else if (next(TokenKind.NEW)) {
+        } else if (next(NEW)) {
             scan();
-            check(TokenKind.IDENTIFIER);
+            check(IDENTIFIER);
 
-            if (next(TokenKind.LEFT_BRACKET)) {
+            if (next(LEFT_BRACKET)) {
                 scan();
                 expression();
-                check(TokenKind.RIGHT_BRACKET);
+                check(RIGHT_BRACKET);
             }
-        } else {
-            check(TokenKind.LEFT_PARENS);
+        } else if (next(LEFT_PARENS)) {
+            scan();
             expression();
-            check(TokenKind.RIGHT_PARENS);
+            check(RIGHT_PARENS);
+        } else {
+            error("unexpected token: " + nextToken.getKind());
         }
     }
 
@@ -451,7 +491,7 @@ public class Parser {
 
         expression();
 
-        while (next(TokenKind.COMMA)) {
+        while (next(COMMA)) {
             expression();
         }
     }
