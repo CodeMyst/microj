@@ -1,11 +1,11 @@
 program P
     final int a = 5;
 {
-	+ main()
+	void main()
 		int i;
 	{
 		i = 0;
-		while (i <) {
+		while (i < 5) {
 			print(i);
 			i = i + 1;
 		}

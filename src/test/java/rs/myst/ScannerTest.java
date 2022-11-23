@@ -2,7 +2,6 @@ package rs.myst;
 
 import org.junit.jupiter.api.Test;
 
-import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.net.URL;
@@ -24,6 +23,8 @@ class ScannerTest {
 
         for (URL sampleFile : sampleFiles) {
             try (FileReader reader = new FileReader(sampleFile.getPath())) {
+                System.out.println("Scanning: " + sampleFile.getFile());
+
                 Scanner scanner = new Scanner(reader);
 
                 Token token;
@@ -45,6 +46,8 @@ class ScannerTest {
         assert sampleFile != null;
 
         try (FileReader reader = new FileReader(sampleFile.getPath())) {
+            System.out.println("Scanning: " + sampleFile.getFile());
+
             Scanner scanner = new Scanner(reader);
 
             Token token;

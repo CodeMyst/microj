@@ -23,6 +23,8 @@ class ParserTest {
 
         for (URL sampleFile : sampleFiles) {
             try (FileReader reader = new FileReader(sampleFile.getPath())) {
+                System.out.println("Parsing: " + sampleFile.getFile());
+
                 Scanner scanner = new Scanner(reader);
 
                 Parser parser = new Parser(scanner);

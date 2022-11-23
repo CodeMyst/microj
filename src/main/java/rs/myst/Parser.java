@@ -354,7 +354,7 @@ public class Parser {
             scan();
         } else if (next(LESS)) {
             scan();
-        } else if (next(LESS)) {
+        } else if (next(LESS_EQUAL)) {
             scan();
         } else {
             error("expected a relational operator, got: " + nextToken.getKind());
