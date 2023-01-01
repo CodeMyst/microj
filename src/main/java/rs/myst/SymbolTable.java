@@ -3,43 +3,39 @@ package rs.myst;
 import java.util.LinkedList;
 
 public class SymbolTable {
-    public static final Type INT_TYPE = new Type(TypeKind.INT);
-    public static final Type CHAR_TYPE = new Type(TypeKind.CHAR);
-    public static final Type NULL_TYPE = new Type(TypeKind.CLASS);
-    public static final Type NO_TYPE = new Type(TypeKind.NONE);
-
-    public static Symbol CHR_SYMBOL;
-    public static Symbol ORD_SYMBOL;
-    public static Symbol LEN_SYMBOL;
-
     private final LinkedList<Scope> scopes = new LinkedList<>();
 
     public SymbolTable() {
+        openScope();
         generateBuiltinTypes();
     }
 
     public Symbol insert(SymbolKind kind, String name, Type type) {
-        if (scopes.size() == 0) return null;
-
-        if (existsByName(name)) return null;
-
-        final Symbol node = Symbol.builder()
+        Symbol symbol = Symbol.builder()
                 .kind(kind)
                 .name(name)
                 .type(type)
                 .build();
 
+        return insert(symbol);
+    }
+
+    public Symbol insert(Symbol symbol) {
+        if (scopes.size() == 0) return null;
+
+        if (existsByName(symbol.getName())) return null;
+
         final Scope scope = scopes.getLast();
 
-        if (kind == SymbolKind.VARIABLE) {
-            node.setAddress(scope.getNextAddress());
+        if (symbol.getKind() == SymbolKind.VARIABLE) {
+            symbol.setAddress(scope.getNextAddress());
         }
 
-        node.setScopeType(scopes.size() == 1 ? ScopeType.GLOBAL : ScopeType.LOCAL);
+        symbol.setScopeType(scopes.size() == 2 ? ScopeType.GLOBAL : ScopeType.LOCAL);
 
-        scope.addNode(node);
+        scope.addNode(symbol);
 
-        return node;
+        return symbol;
     }
 
     public Symbol findByName(String name) {
@@ -70,49 +66,55 @@ public class SymbolTable {
     private void generateBuiltinTypes() {
         // TODO: add to scope
 
-        CHR_SYMBOL = Symbol.builder()
+        insert(SymbolKind.TYPE, "int", new Type(TypeKind.INT));
+        insert(SymbolKind.TYPE, "char", new Type(TypeKind.CHAR));
+
+        Symbol chrSymbol = Symbol.builder()
                 .kind(SymbolKind.METHOD)
                 .name("chr")
-                .type(CHAR_TYPE)
-                .scopeType(ScopeType.GLOBAL)
+                .type(new Type(TypeKind.CHAR))
                 .numberOfParams(1)
                 .build();
 
-        CHR_SYMBOL.addLocalSymbol(Symbol.builder()
+        chrSymbol.addLocalSymbol(Symbol.builder()
                 .kind(SymbolKind.VARIABLE)
                 .name("i")
-                .type(INT_TYPE)
+                .type(new Type(TypeKind.INT))
                 .scopeType(ScopeType.LOCAL)
                 .build());
 
-        ORD_SYMBOL = Symbol.builder()
+        insert(chrSymbol);
+
+        Symbol ordSymbol = Symbol.builder()
                 .kind(SymbolKind.METHOD)
                 .name("ord")
-                .type(INT_TYPE)
-                .scopeType(ScopeType.GLOBAL)
+                .type(new Type(TypeKind.INT))
                 .numberOfParams(1)
                 .build();
 
-        ORD_SYMBOL.addLocalSymbol(Symbol.builder()
+        ordSymbol.addLocalSymbol(Symbol.builder()
                 .kind(SymbolKind.VARIABLE)
                 .name("ch")
-                .type(CHAR_TYPE)
+                .type(new Type(TypeKind.CHAR))
                 .scopeType(ScopeType.LOCAL)
                 .build());
 
-        LEN_SYMBOL = Symbol.builder()
+        insert(ordSymbol);
+
+        Symbol lenSymbol = Symbol.builder()
                 .kind(SymbolKind.METHOD)
                 .name("len")
-                .type(INT_TYPE)
-                .scopeType(ScopeType.GLOBAL)
+                .type(new Type(TypeKind.INT))
                 .numberOfParams(1)
                 .build();
 
-        LEN_SYMBOL.addLocalSymbol(Symbol.builder()
+        lenSymbol.addLocalSymbol(Symbol.builder()
                 .kind(SymbolKind.VARIABLE)
                 .name("arr")
-                .type(new Type(TypeKind.ARRAY, NO_TYPE))
+                .type(new Type(TypeKind.ARRAY, new Type(TypeKind.NONE)))
                 .scopeType(ScopeType.LOCAL)
                 .build());
+
+        insert(lenSymbol);
     }
 }

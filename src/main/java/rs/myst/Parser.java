@@ -1,6 +1,7 @@
 package rs.myst;
 
 import java.util.EnumSet;
+import java.util.LinkedList;
 import java.util.Set;
 
 import static rs.myst.TokenKind.*;
@@ -29,6 +30,10 @@ public class Parser {
             PRINT,
             LEFT_BRACE,
             SEMICOLON);
+
+    private final SymbolTable symbolTable = new SymbolTable();
+    private Symbol currentMethod = null;
+    private Symbol currentClass = null;
 
     public Parser(Scanner scanner) {
         this.scanner = scanner;
@@ -59,7 +64,7 @@ public class Parser {
         if (next(expected)) {
             scan();
         } else {
-            error("expected " + expected + ", got " + nextToken.getKind());
+            error(expected, nextToken.getKind());
         }
     }
 
@@ -80,11 +85,17 @@ public class Parser {
         errorDistance = 0;
     }
 
+    private void error(TokenKind expected, TokenKind got) {
+        error("expected " + expected + ", got " + got);
+    }
+
     private void program() {
         // "program" identifier {constDeclaration | varDeclaration | classDeclaration} "{" {methodDeclaration} "}"
 
         check(PROGRAM);
         check(IDENTIFIER);
+
+        symbolTable.openScope();
 
         while (next(FINAL) || next(IDENTIFIER) || next(CLASS)) {
             if (next(FINAL)) {
@@ -101,56 +112,124 @@ public class Parser {
             methodDeclaration();
         }
         check(RIGHT_BRACE);
+
+        symbolTable.closeScope();
     }
 
     private void methodDeclaration() {
         // (type | "void") identifier "(" [formParams] ")" {varDeclaration} block
 
+        Type type;
+
         if (next(VOID)) {
             scan();
+            type = new Type(TypeKind.NONE);
         } else {
-            type();
+            type = type();
         }
 
-        check(IDENTIFIER);
+        boolean valid = true;
+
+        if (!next(IDENTIFIER)) {
+            error(IDENTIFIER, nextToken.getKind());
+            valid = false;
+        } else {
+            currentMethod = new Symbol();
+            currentMethod.setName(nextToken.getString());
+            currentMethod.setType(type);
+        }
+
+        scan();
+
+        symbolTable.openScope();
 
         check(LEFT_PARENS);
         // should be a type
         if (next(IDENTIFIER)) {
-            formParams();
+            LinkedList<Symbol> params = formParams();
+            if (valid) currentMethod.setLocals(params);
         }
         check(RIGHT_PARENS);
 
         // should be a type
         while (next(IDENTIFIER)) {
-            varDeclaration();
+            Symbol var = varDeclaration();
+            if (valid) currentMethod.addLocalSymbol(var);
         }
 
         block();
+
+        symbolTable.closeScope();
     }
 
-    private void formParams() {
+    private LinkedList<Symbol> formParams() {
         // type identifier {"," type identifier}
 
-        type();
-        check(IDENTIFIER);
+        LinkedList<Symbol> params = new LinkedList<>();
+
+        Type type = type();
+
+        if (!next(IDENTIFIER)) {
+            error(IDENTIFIER, nextToken.getKind());
+        } else {
+            Symbol symbol = symbolTable.insert(SymbolKind.VARIABLE, nextToken.getString(), type);
+            params.add(symbol);
+        }
+
+        scan();
 
         while (next(COMMA)) {
             scan();
-            type();
-            check(IDENTIFIER);
+
+            type = type();
+
+            if (!next(IDENTIFIER)) {
+                error(IDENTIFIER, nextToken.getKind());
+            } else {
+                Symbol symbol = symbolTable.insert(SymbolKind.VARIABLE, nextToken.getString(), type);
+                params.add(symbol);
+            }
+
+            scan();
         }
+
+        return params;
     }
 
     private void designator() {
         // identifier {"." identifier | "[" Expression "]"}
 
-        check(IDENTIFIER);
+        Symbol symbol = null;
+
+        if (next(IDENTIFIER)) {
+            symbol = symbolTable.findByName(nextToken.getString());
+
+            if (symbol == null) {
+                error("failed to resolve typename " + nextToken.getString());
+            }
+        } else {
+            error(IDENTIFIER, nextToken.getKind());
+        }
+
+        scan();
 
         while (next(PERIOD) || next(LEFT_BRACKET)) {
             if (next(PERIOD)) {
                 scan();
-                check(IDENTIFIER);
+
+                if (next(IDENTIFIER)) {
+                    if (symbol != null) {
+                        Symbol typeSymbol = symbolTable.findByName(symbol.getType().getName());
+
+                        if (!typeSymbol.existsLocal(nextToken.getString())) {
+                            error("identifier " + nextToken.getString() + " doesn't exist on type " + symbol.getType().getName());
+                        }
+                    }
+                } else {
+                    error(IDENTIFIER, nextToken.getKind());
+                }
+
+                scan();
             } else {
                 check(LEFT_BRACKET);
                 expression();
@@ -159,13 +238,29 @@ public class Parser {
         }
     }
 
-    private void type() {
-        check(IDENTIFIER);
+    private Type type() {
+        Type type = null;
+
+        if (next(IDENTIFIER)) {
+            Symbol typeSymbol = symbolTable.findByName(nextToken.getString());
+
+            if (typeSymbol != null && typeSymbol.getKind() == SymbolKind.TYPE) {
+                type = typeSymbol.getType();
+            } else {
+                error("cannot resolve typename " + nextToken.getString());
+            }
+        } else {
+            error("expected type, got " + nextToken.getKind());
+        }
+
+        scan();
 
         if (next(LEFT_BRACKET)) {
             scan();
             check(RIGHT_BRACKET);
         }
+
+        return type;
     }
 
     private void block() {
@@ -300,8 +395,18 @@ public class Parser {
         // "final" type identifier "=" (number | charConst) ";"
 
         check(FINAL);
-        type();
-        check(IDENTIFIER);
+
+        Type type = type();
+
+        if (type.getKind() != TypeKind.INT && type.getKind() != TypeKind.CHAR) {
+            error("cannot declare a constant of type: " + type.getKind());
+        } else if (!next(IDENTIFIER)) {
+            error(IDENTIFIER, nextToken.getKind());
+        } else {
+            symbolTable.insert(SymbolKind.CONSTANT, nextToken.getString(), type);
+        }
+
+        scan();
         check(ASSIGN);
 
         if (next(NUMBER)) {
@@ -313,11 +418,20 @@ public class Parser {
         check(SEMICOLON);
     }
 
-    private void varDeclaration() {
+    private Symbol varDeclaration() {
         // type identifier {"," identifier} ";"
 
-        type();
-        check(IDENTIFIER);
+        Symbol symbol = null;
+
+        Type type = type();
+
+        if (!next(IDENTIFIER)) {
+            error(IDENTIFIER, nextToken.getKind());
+        } else {
+            symbol = symbolTable.insert(SymbolKind.VARIABLE, nextToken.getString(), type);
+        }
+
+        scan();
 
         while (next(COMMA)) {
             scan();
@@ -325,20 +439,40 @@ public class Parser {
         }
 
         check(SEMICOLON);
+
+        return symbol;
     }
 
     private void classDeclaration() {
         // "class" identifier "{" {varDeclaration} "}"
 
         check(CLASS);
-        check(IDENTIFIER);
+
+        boolean valid = false;
+
+        if (!next(IDENTIFIER)) {
+            error(IDENTIFIER, nextToken.getKind());
+        } else {
+            Type type = new Type(TypeKind.CLASS);
+            type.setName(nextToken.getString());
+            currentClass = symbolTable.insert(SymbolKind.TYPE, nextToken.getString(), type);
+            valid = true;
+        }
+
+        scan();
+
+        symbolTable.openScope();
+
         check(LEFT_BRACE);
 
         while (next(IDENTIFIER)) {
-            varDeclaration();
+            Symbol var = varDeclaration();
+            if (valid) currentClass.addLocalSymbol(var);
         }
 
         check(RIGHT_BRACE);
+
+        symbolTable.closeScope();
     }
 
     private void relOp() {

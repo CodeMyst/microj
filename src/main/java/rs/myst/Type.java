@@ -10,6 +10,8 @@ import java.util.LinkedList;
 public class Type {
     private TypeKind kind;
 
+    private String name;
+
     private Type arrayElementType; // type of elements in the array (if this type is an array)
 
     private final LinkedList<Symbol> fields = new LinkedList<>();

@@ -1,14 +1,14 @@
 package rs.myst;
 
-import lombok.Builder;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.*;
 
 import java.util.LinkedList;
 
 @Getter
 @Setter
 @Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class Symbol {
     private SymbolKind kind;
     private String name;
@@ -17,9 +17,18 @@ public class Symbol {
     private int address;
     private ScopeType scopeType;
     private int numberOfParams;
-    private final LinkedList<Symbol> locals = new LinkedList<>();
+    private LinkedList<Symbol> locals = new LinkedList<>();
 
     public void addLocalSymbol(Symbol local) {
+        if (locals == null) locals = new LinkedList<>();
         locals.addLast(local);
+    }
+
+    public boolean existsLocal(String name) {
+        if (locals == null) return false;
+
+        for (Symbol s : locals) if (s.getName().equals(name)) return true;
+
+        return false;
     }
 }

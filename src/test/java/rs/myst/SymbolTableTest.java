@@ -11,21 +11,21 @@ class SymbolTableTest {
 
         symbolTable.openScope();
 
-            Symbol iSym = symbolTable.insert(SymbolKind.VARIABLE, "i", SymbolTable.INT_TYPE);
+            Symbol iSym = symbolTable.insert(SymbolKind.VARIABLE, "i", new Type(TypeKind.INT));
 
             assertNotNull(iSym);
 
             assertEquals(0, iSym.getAddress());
             assertEquals(ScopeType.GLOBAL, iSym.getScopeType());
 
-            Symbol jSym = symbolTable.insert(SymbolKind.VARIABLE, "j", SymbolTable.INT_TYPE);
+            Symbol jSym = symbolTable.insert(SymbolKind.VARIABLE, "j", new Type(TypeKind.INT));
 
             assertNotNull(jSym);
 
             assertEquals(1, jSym.getAddress());
             assertEquals(ScopeType.GLOBAL, jSym.getScopeType());
 
-            Symbol i2Sym = symbolTable.insert(SymbolKind.VARIABLE, "i", SymbolTable.INT_TYPE);
+            Symbol i2Sym = symbolTable.insert(SymbolKind.VARIABLE, "i", new Type(TypeKind.INT));
 
             assertNull(i2Sym);
 
@@ -33,7 +33,7 @@ class SymbolTableTest {
 
         symbolTable.openScope();
 
-            Symbol i3Sym = symbolTable.insert(SymbolKind.VARIABLE, "i", SymbolTable.INT_TYPE);
+            Symbol i3Sym = symbolTable.insert(SymbolKind.VARIABLE, "i", new Type(TypeKind.INT));
 
             assertNotNull(i3Sym);
 
@@ -46,7 +46,7 @@ class SymbolTableTest {
 
         symbolTable.openScope();
 
-            Symbol iSym = symbolTable.insert(SymbolKind.VARIABLE, "i", SymbolTable.INT_TYPE);
+            Symbol iSym = symbolTable.insert(SymbolKind.VARIABLE, "i", new Type(TypeKind.INT));
 
             assertNotNull(iSym);
 
