@@ -3,6 +3,7 @@ package rs.myst;
 import lombok.*;
 
 import java.util.LinkedList;
+import java.util.List;
 
 @Getter
 @Setter
@@ -17,16 +18,18 @@ public class Symbol {
     private int address;
     private ScopeType scopeType;
     private int numberOfParams;
-    private LinkedList<Symbol> locals = new LinkedList<>();
+
+    private final LinkedList<Symbol> locals = new LinkedList<>();
 
     public void addLocalSymbol(Symbol local) {
-        if (locals == null) locals = new LinkedList<>();
         locals.addLast(local);
     }
 
-    public boolean existsLocal(String name) {
-        if (locals == null) return false;
+    public void addLocals(List<Symbol> locals) {
+        this.locals.addAll(locals);
+    }
 
+    public boolean existsLocal(String name) {
         for (Symbol s : locals) if (s.getName().equals(name)) return true;
 
         return false;

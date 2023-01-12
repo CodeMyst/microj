@@ -147,14 +147,14 @@ public class Parser {
         // should be a type
         if (next(IDENTIFIER)) {
             LinkedList<Symbol> params = formParams();
-            if (valid) currentMethod.setLocals(params);
+            if (valid) currentMethod.addLocals(params);
         }
         check(RIGHT_PARENS);
 
         // should be a type
         while (next(IDENTIFIER)) {
-            Symbol var = varDeclaration();
-            if (valid) currentMethod.addLocalSymbol(var);
+            LinkedList<Symbol> vars = varDeclaration();
+            if (valid) currentMethod.addLocals(vars);
         }
 
         block();
@@ -268,6 +268,8 @@ public class Parser {
 
         check(LEFT_BRACE);
 
+        symbolTable.openScope();
+
         while (true) {
             if (nextOf(statementFirstTokens)) {
                 statement();
@@ -285,6 +287,8 @@ public class Parser {
         while (nextOf(statementFirstTokens)) {
             statement();
         }
+
+        symbolTable.closeScope();
 
         check(RIGHT_BRACE);
     }
@@ -418,29 +422,38 @@ public class Parser {
         check(SEMICOLON);
     }
 
-    private Symbol varDeclaration() {
+    private LinkedList<Symbol> varDeclaration() {
         // type identifier {"," identifier} ";"
 
-        Symbol symbol = null;
+        LinkedList<Symbol> symbols = new LinkedList<>();
 
         Type type = type();
 
         if (!next(IDENTIFIER)) {
             error(IDENTIFIER, nextToken.getKind());
         } else {
-            symbol = symbolTable.insert(SymbolKind.VARIABLE, nextToken.getString(), type);
+            Symbol symbol = symbolTable.insert(SymbolKind.VARIABLE, nextToken.getString(), type);
+            symbols.add(symbol);
         }
 
         scan();
 
         while (next(COMMA)) {
             scan();
-            check(IDENTIFIER);
+
+            if (!next(IDENTIFIER)) {
+                error(IDENTIFIER, nextToken.getKind());
+            } else {
+                Symbol symbol = symbolTable.insert(SymbolKind.VARIABLE, nextToken.getString(), type);
+                symbols.add(symbol);
+            }
+
+            scan();
         }
 
         check(SEMICOLON);
 
-        return symbol;
+        return symbols;
     }
 
     private void classDeclaration() {
@@ -466,8 +479,8 @@ public class Parser {
         check(LEFT_BRACE);
 
         while (next(IDENTIFIER)) {
-            Symbol var = varDeclaration();
-            if (valid) currentClass.addLocalSymbol(var);
+            LinkedList<Symbol> vars = varDeclaration();
+            if (valid) currentClass.addLocals(vars);
         }
 
         check(RIGHT_BRACE);
