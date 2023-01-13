@@ -137,6 +137,8 @@ public class Parser {
             currentMethod = new Symbol();
             currentMethod.setName(nextToken.getString());
             currentMethod.setType(type);
+
+            symbolTable.insert(currentMethod);
         }
 
         scan();

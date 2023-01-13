@@ -64,8 +64,6 @@ public class SymbolTable {
     }
 
     private void generateBuiltinTypes() {
-        // TODO: add to scope
-
         insert(SymbolKind.TYPE, "int", new Type(TypeKind.INT));
         insert(SymbolKind.TYPE, "char", new Type(TypeKind.CHAR));
 
