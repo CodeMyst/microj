@@ -24,4 +24,13 @@ public class Type {
         this.kind = kind;
         this.arrayElementType = arrayElementType;
     }
+
+    @Override
+    public String toString() {
+        if (kind == TypeKind.ARRAY) {
+            return arrayElementType.kind + "[]";
+        } else {
+            return kind.toString();
+        }
+    }
 }

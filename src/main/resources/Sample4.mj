@@ -1,0 +1,12 @@
+program P
+{
+    void main()
+        int[] arr;
+        int a;
+    {
+        arr = new int[10];
+        arr[0] = 5;
+
+        a = arr[0];
+    }
+}

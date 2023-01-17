@@ -71,7 +71,6 @@ public class SymbolTable {
                 .kind(SymbolKind.METHOD)
                 .name("chr")
                 .type(new Type(TypeKind.CHAR))
-                .numberOfParams(1)
                 .build();
 
         chrSymbol.addLocalSymbol(Symbol.builder()
@@ -87,7 +86,6 @@ public class SymbolTable {
                 .kind(SymbolKind.METHOD)
                 .name("ord")
                 .type(new Type(TypeKind.INT))
-                .numberOfParams(1)
                 .build();
 
         ordSymbol.addLocalSymbol(Symbol.builder()
@@ -103,7 +101,6 @@ public class SymbolTable {
                 .kind(SymbolKind.METHOD)
                 .name("len")
                 .type(new Type(TypeKind.INT))
-                .numberOfParams(1)
                 .build();
 
         lenSymbol.addLocalSymbol(Symbol.builder()

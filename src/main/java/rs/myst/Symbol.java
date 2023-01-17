@@ -11,13 +11,13 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 public class Symbol {
-    private SymbolKind kind;
+    @Builder.Default
+    private SymbolKind kind = SymbolKind.NONE;
     private String name;
     private Type type;
     private int value;
     private int address;
     private ScopeType scopeType;
-    private int numberOfParams;
 
     private final LinkedList<Symbol> locals = new LinkedList<>();
 
@@ -29,9 +29,13 @@ public class Symbol {
         this.locals.addAll(locals);
     }
 
-    public boolean existsLocal(String name) {
-        for (Symbol s : locals) if (s.getName().equals(name)) return true;
+    public Symbol getLocal(String name) {
+        for (Symbol s : locals) if (s.getName().equals(name)) return s;
 
-        return false;
+        return null;
+    }
+
+    public int getNumberOfParams() {
+        return locals.size();
     }
 }

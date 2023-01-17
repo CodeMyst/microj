@@ -2,6 +2,7 @@ package rs.myst;
 
 import java.util.EnumSet;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Set;
 
 import static rs.myst.TokenKind.*;
@@ -34,6 +35,7 @@ public class Parser {
     private final SymbolTable symbolTable = new SymbolTable();
     private Symbol currentMethod = null;
     private Symbol currentClass = null;
+    private boolean insideLoop = false;
 
     public Parser(Scanner scanner) {
         this.scanner = scanner;
@@ -137,6 +139,7 @@ public class Parser {
             currentMethod = new Symbol();
             currentMethod.setName(nextToken.getString());
             currentMethod.setType(type);
+            currentMethod.setKind(SymbolKind.METHOD);
 
             symbolTable.insert(currentMethod);
         }
@@ -146,22 +149,21 @@ public class Parser {
         symbolTable.openScope();
 
         check(LEFT_PARENS);
-        // should be a type
         if (next(IDENTIFIER)) {
             LinkedList<Symbol> params = formParams();
             if (valid) currentMethod.addLocals(params);
         }
         check(RIGHT_PARENS);
 
-        // should be a type
         while (next(IDENTIFIER)) {
-            LinkedList<Symbol> vars = varDeclaration();
-            if (valid) currentMethod.addLocals(vars);
+            varDeclaration();
         }
 
         block();
 
         symbolTable.closeScope();
+
+        currentMethod = null;
     }
 
     private LinkedList<Symbol> formParams() {
@@ -176,6 +178,10 @@ public class Parser {
         } else {
             Symbol symbol = symbolTable.insert(SymbolKind.VARIABLE, nextToken.getString(), type);
             params.add(symbol);
+
+            if (symbol == null) {
+                error("Cannot redeclare symbol with the name " + nextToken.getString());
+            }
         }
 
         scan();
@@ -190,6 +196,10 @@ public class Parser {
             } else {
                 Symbol symbol = symbolTable.insert(SymbolKind.VARIABLE, nextToken.getString(), type);
                 params.add(symbol);
+
+                if (symbol == null) {
+                    error("Cannot redeclare symbol with the name " + nextToken.getString());
+                }
             }
 
             scan();
@@ -198,7 +208,7 @@ public class Parser {
         return params;
     }
 
-    private void designator() {
+    private Symbol designator() {
         // identifier {"." identifier | "[" Expression "]"}
 
         Symbol symbol = null;
@@ -223,8 +233,14 @@ public class Parser {
                     if (symbol != null) {
                         Symbol typeSymbol = symbolTable.findByName(symbol.getType().getName());
 
-                        if (!typeSymbol.existsLocal(nextToken.getString())) {
-                            error("identifier " + nextToken.getString() + " doesn't exist on type " + symbol.getType().getName());
+                        if (typeSymbol == null) {
+                            error(symbol.getType().getName() + " doesn't exist in the current scope.");
+                        } else {
+                            symbol = typeSymbol.getLocal(nextToken.getString());
+
+                            if (symbol == null) {
+                                error("identifier " + nextToken.getString() + " doesn't exist on type " + typeSymbol.getName());
+                            }
                         }
                     }
                 } else {
@@ -234,10 +250,17 @@ public class Parser {
                 scan();
             } else {
                 check(LEFT_BRACKET);
-                expression();
+
+                Symbol expression = expression();
+                if (expression.getType().getKind() != TypeKind.INT) {
+                    error("Can't use type " + expression.getType().getKind() + " as an array size.");
+                }
+
                 check(RIGHT_BRACKET);
             }
         }
+
+        return symbol;
     }
 
     private Type type() {
@@ -249,16 +272,19 @@ public class Parser {
             if (typeSymbol != null && typeSymbol.getKind() == SymbolKind.TYPE) {
                 type = typeSymbol.getType();
             } else {
-                error("cannot resolve typename " + nextToken.getString());
+                error("Cannot resolve typename " + nextToken.getString());
             }
         } else {
-            error("expected type, got " + nextToken.getKind());
+            error("Expected type, got " + nextToken.getKind());
         }
 
         scan();
 
         if (next(LEFT_BRACKET)) {
             scan();
+
+            type = new Type(TypeKind.ARRAY, type);
+
             check(RIGHT_BRACKET);
         }
 
@@ -307,11 +333,45 @@ public class Parser {
         // ";"
 
         if (next(IDENTIFIER)) {
-            designator();
+            Symbol symbol = designator();
 
             if (next(ASSIGN)) {
                 scan();
-                expression();
+
+                Symbol expression = expression();
+
+                if (symbol.getKind() != SymbolKind.VARIABLE) {
+                    error("Cannot assign to " + symbol.getKind());
+                }
+
+                boolean valid = true;
+
+                if (symbol.getType().getKind() != TypeKind.ARRAY) {
+                    if (expression.getType().getKind() != TypeKind.ARRAY) {
+                        if (symbol.getType().getKind() != expression.getType().getKind()) {
+                            valid = false;
+                        }
+                    } else {
+                        if (symbol.getType().getKind() != expression.getType().getArrayElementType().getKind()) {
+                            valid = false;
+                        }
+                    }
+                } else {
+                    if (expression.getType().getKind() == TypeKind.ARRAY) {
+                        if (symbol.getType().getArrayElementType() != expression.getType().getArrayElementType()) {
+                            valid = false;
+                        }
+                    } else {
+                        if (symbol.getType().getArrayElementType().getKind() != expression.getType().getKind()) {
+                            valid = false;
+                        }
+                    }
+                }
+
+                if (!valid) {
+                    error("Cannot assign " + expression.getType() + " to " + symbol.getType());
+                }
+
                 check(SEMICOLON);
             } else if (next(LEFT_PARENS)) {
                 scan();
@@ -323,20 +383,56 @@ public class Parser {
                     next(NEW) ||
                     next(LEFT_PARENS)) {
 
-                    actParams();
+                    List<Symbol> params = actParams();
+
+                    if (symbol != null) {
+                        if (params.size() != symbol.getNumberOfParams()) {
+                            error("Method " + symbol.getName() + " accepts " + symbol.getNumberOfParams() + " parameters, but " + params.size() + " were provided");
+                        } else {
+                            for (int i = 0; i < params.size(); i++) {
+                                TypeKind provided = params.get(i).getType().getKind();
+
+                                if (symbol.getLocals().get(i) == null) continue;
+
+                                TypeKind expected = symbol.getLocals().get(i).getType().getKind();
+                                if (provided != expected) {
+                                    error("Method " + symbol.getName() + " parameter " + (i+1) + " should be of type " + expected + " but " + provided + " was provided.");
+                                }
+                            }
+                        }
+                    }
                 }
 
                 check(RIGHT_PARENS);
                 check(SEMICOLON);
             } else if (next(PLUS_PLUS)) {
                 scan();
+
+                if (symbol.getKind() != SymbolKind.VARIABLE) {
+                    error("Cannot assign to a " + symbol.getKind());
+                } else if (symbol.getType().getKind() != TypeKind.INT && (symbol.getType().getKind() == TypeKind.ARRAY && symbol.getType().getArrayElementType().getKind() != TypeKind.INT)) {
+                    error("Cannot increment a " + symbol.getType().getKind());
+                }
+
                 check(SEMICOLON);
             } else {
                 check(MINUS_MINUS);
+
+                if (symbol.getKind() != SymbolKind.VARIABLE) {
+                    error("Cannot assign to a " + symbol.getKind());
+                } else if (symbol.getType().getKind() != TypeKind.INT && (symbol.getType().getKind() == TypeKind.ARRAY && symbol.getType().getArrayElementType().getKind() != TypeKind.INT)) {
+                    error("Cannot decrement a " + symbol.getType().getKind());
+                }
+
                 check(SEMICOLON);
             }
         } else if (next(IF)) {
             scan();
+
+            if (currentMethod == null) {
+                error("Cannot use the if statement outside of methods.");
+            }
+
             check(LEFT_PARENS);
             condition();
             check(RIGHT_PARENS);
@@ -349,16 +445,36 @@ public class Parser {
             }
         } else if (next(WHILE)) {
             scan();
+
+            if (currentMethod == null) {
+                error("Cannot use while loops outside of methods.");
+            }
+
             check(LEFT_PARENS);
             condition();
             check(RIGHT_PARENS);
 
+            insideLoop = true;
             statement();
+            insideLoop = false;
         } else if (next(BREAK)) {
             scan();
+
+            if (!insideLoop) {
+                error("Cannot break outside of a loop.");
+            }
+
             check(SEMICOLON);
         } else if (next(RETURN)) {
             scan();
+
+            if (currentMethod == null) {
+                error("Cannot use return outside of a method.");
+            } else {
+                if (next(SEMICOLON) && currentMethod.getType().getKind() != TypeKind.NONE) {
+                    error("Return value of " + currentMethod.getType().getKind() + " expected.");
+                }
+            }
 
             if (next(MINUS) ||
                 next(IDENTIFIER) ||
@@ -367,21 +483,39 @@ public class Parser {
                 next(NEW) ||
                 next(LEFT_PARENS)) {
 
-                expression();
+                Symbol expression = expression();
+
+                if (currentMethod != null) {
+                    if (currentMethod.getType().getKind() != TypeKind.NONE) {
+                        error("Return value not expected, method " + currentMethod.getName() + " returns void.");
+                    } else {
+                        if (currentMethod.getType().getKind() != expression.getType().getKind()) {
+                            error("Return value of type " + currentMethod.getType().getKind() + " expected, got " + expression.getType().getKind());
+                        }
+                    }
+                }
             }
 
             check(SEMICOLON);
         } else if (next(READ)) {
             scan();
             check(LEFT_PARENS);
-            designator();
+
+            Symbol designator = designator();
+            if (designator.getType().getKind() != TypeKind.INT && designator.getType().getKind() != TypeKind.CHAR) {
+                error("Can't read " + designator.getType().getKind() + " from standard input.");
+            }
+
             check(RIGHT_PARENS);
             check(SEMICOLON);
         } else if (next(PRINT)) {
             scan();
             check(LEFT_PARENS);
 
-            expression();
+            Symbol expression = expression();
+            if (expression.getType().getKind() != TypeKind.INT && expression.getType().getKind() != TypeKind.CHAR) {
+                error("Can't output " + expression.getType().getKind() + " to standard output.");
+            }
 
             if (next(COMMA)) {
                 scan();
@@ -436,6 +570,10 @@ public class Parser {
         } else {
             Symbol symbol = symbolTable.insert(SymbolKind.VARIABLE, nextToken.getString(), type);
             symbols.add(symbol);
+
+            if (symbol == null) {
+                error("Cannot redeclare symbol with the name " + nextToken.getString());
+            }
         }
 
         scan();
@@ -448,6 +586,10 @@ public class Parser {
             } else {
                 Symbol symbol = symbolTable.insert(SymbolKind.VARIABLE, nextToken.getString(), type);
                 symbols.add(symbol);
+
+                if (symbol == null) {
+                    error("Cannot redeclare symbol with the name " + nextToken.getString());
+                }
             }
 
             scan();
@@ -471,7 +613,14 @@ public class Parser {
             Type type = new Type(TypeKind.CLASS);
             type.setName(nextToken.getString());
             currentClass = symbolTable.insert(SymbolKind.TYPE, nextToken.getString(), type);
-            valid = true;
+
+            symbolTable.insert(currentClass);
+
+            if (currentClass == null) {
+                error("Cannot redeclare symbol with the name " + nextToken.getString());
+            } else {
+                valid = true;
+            }
         }
 
         scan();
@@ -488,6 +637,8 @@ public class Parser {
         check(RIGHT_BRACE);
 
         symbolTable.closeScope();
+
+        currentClass = null;
     }
 
     private void relOp() {
@@ -557,49 +708,101 @@ public class Parser {
     private void conditionFact() {
         // expression relOp expression
 
-        expression();
+        Symbol e1 = expression();
+
+        if (e1 != null) {
+            Type t = e1.getType().getKind() == TypeKind.ARRAY ? e1.getType().getArrayElementType() : e1.getType();
+            if (!(t.getKind() == TypeKind.CHAR || t.getKind() == TypeKind.INT)) {
+                error("Only ints and chars can be compared.");
+            }
+        }
 
         relOp();
 
-        expression();
+        Symbol e2 = expression();
+
+        if (e2 != null) {
+            Type t = e2.getType().getKind() == TypeKind.ARRAY ? e2.getType().getArrayElementType() : e2.getType();
+            if (!(t.getKind() == TypeKind.CHAR || t.getKind() == TypeKind.INT)) {
+                error("Only ints and chars can be compared.");
+            }
+        }
     }
 
-    private void expression() {
+    private Symbol expression() {
         // ["-"] term {addOp term}
 
         if (next(MINUS)) {
             scan();
         }
 
-        term();
+        Symbol t1 = term();
+
+        if (t1 != null && (next(PLUS) || next(MINUS))) {
+            Type t = t1.getType().getKind() == TypeKind.ARRAY ? t1.getType().getArrayElementType() : t1.getType();
+            if (t.getKind() != TypeKind.INT) {
+                error("Can't do math with " + t.getKind() + ", math can only be done with ints.");
+            }
+        }
 
         while (next(PLUS) || next(MINUS)) {
             addOp();
 
-            term();
+            Symbol t2 = term();
+
+            if (t2 != null) {
+                Type t = t2.getType().getKind() == TypeKind.ARRAY ? t2.getType().getArrayElementType() : t2.getType();
+                if (t.getKind() != TypeKind.INT) {
+                    error("Can't do math with " + t.getKind() + ", math can only be done with ints.");
+                }
+            }
         }
+
+        return t1;
     }
 
-    private void term() {
+    private Symbol term() {
         // factor {mulOp factor}
 
-        factor();
+        Symbol f1 = factor();
+
+        if (f1 != null && (next(TIMES) || next(SLASH) || next(MODULO))) {
+            Type t = f1.getType().getKind() == TypeKind.ARRAY ? f1.getType().getArrayElementType() : f1.getType();
+            if (t.getKind() != TypeKind.INT) {
+                error("Can't do math with " + t.getKind() + ", math can only be done with ints.");
+            }
+        }
 
         while (next(TIMES) || next(SLASH) || next(MODULO)) {
             mulOp();
 
-            factor();
+            Symbol f2 = factor();
+
+            if (f2 != null) {
+                Type t = f2.getType().getKind() == TypeKind.ARRAY ? f2.getType().getArrayElementType() : f2.getType();
+                if (t.getKind() != TypeKind.INT) {
+                    error("Can't do math with " + t.getKind() + ", math can only be done with ints.");
+                }
+            }
         }
+
+        return f1;
     }
 
-    private void factor() {
+    private Symbol factor() {
         // designator ["(" [actParams] ")"] | number | charConst | "new" identifier ["[" expression "]"] | "(" expression ")"
 
+        Symbol symbol = new Symbol();
+
         if (next(IDENTIFIER)) {
-            designator();
+            symbol = designator();
 
             if (next(LEFT_PARENS)) {
                 scan();
+
+                if (symbol != null && !symbol.getKind().equals(SymbolKind.METHOD)) {
+                    error("Can't call " + symbol.getName() + " as a method.");
+                }
 
                 if (next(MINUS) ||
                     next(IDENTIFIER) ||
@@ -608,40 +811,85 @@ public class Parser {
                     next(NEW) ||
                     next(LEFT_PARENS)) {
 
-                    actParams();
+                    List<Symbol> params = actParams();
+
+                    if (symbol != null) {
+                        if (params.size() != symbol.getNumberOfParams()) {
+                            error("Method " + symbol.getName() + " accepts " + symbol.getNumberOfParams() + " parameters, but " + params.size() + " were provided");
+                        } else {
+                            for (int i = 0; i < params.size(); i++) {
+                                TypeKind provided = params.get(i).getType().getKind();
+
+                                if (symbol.getLocals().get(i) == null) continue;
+
+                                TypeKind expected = symbol.getLocals().get(i).getType().getKind();
+                                if (provided != expected) {
+                                    error("Method " + symbol.getName() + " parameter " + (i+1) + " should be of type " + expected + " but " + provided + " was provided.");
+                                }
+                            }
+                        }
+                    }
                 }
 
                 check(RIGHT_PARENS);
             }
         } else if (next(NUMBER)) {
             scan();
+
+            symbol.setType(new Type(TypeKind.INT));
+            symbol.setKind(SymbolKind.CONSTANT);
         } else if (next(CHAR)) {
             scan();
+
+            symbol.setType(new Type(TypeKind.CHAR));
+            symbol.setKind(SymbolKind.CONSTANT);
         } else if (next(NEW)) {
             scan();
+
+            if (next(IDENTIFIER)) {
+                symbol = symbolTable.findByName(nextToken.getString());
+                if (symbol == null) {
+                    error(nextToken.getString() + " doesn't exist in the current scope.");
+                    symbol = new Symbol();
+                } else if (symbol.getKind() != SymbolKind.TYPE) {
+                    error(nextToken.getString() + " isn't a valid type.");
+                }
+            }
             check(IDENTIFIER);
 
             if (next(LEFT_BRACKET)) {
                 scan();
-                expression();
+
+                Symbol expression = expression();
+                if (expression.getType().getKind() != TypeKind.INT) {
+                    error("Can't use type " + expression.getType().getKind() + " as an array size.");
+                }
+
                 check(RIGHT_BRACKET);
             }
         } else if (next(LEFT_PARENS)) {
             scan();
-            expression();
+            symbol = expression();
             check(RIGHT_PARENS);
         } else {
             error("unexpected token: " + nextToken.getKind());
         }
+
+        return symbol;
     }
 
-    private void actParams() {
+    private List<Symbol> actParams() {
         // expression {"," expression}
 
-        expression();
+        List<Symbol> symbols = new LinkedList<>();
+
+        symbols.add(expression());
 
         while (next(COMMA)) {
-            expression();
+            scan();
+            symbols.add(expression());
         }
+
+        return symbols;
     }
 }
