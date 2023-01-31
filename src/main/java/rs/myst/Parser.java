@@ -115,6 +115,13 @@ public class Parser {
         }
         check(RIGHT_BRACE);
 
+        Symbol main = symbolTable.findByName("main");
+        if (main == null || main.getKind() != SymbolKind.METHOD) {
+            error("Program is missing the main method.");
+        } else if (main.getNumberOfParams() != 0) {
+            error("Main doesn't accept any parameters.");
+        }
+
         symbolTable.closeScope();
     }
 
@@ -159,7 +166,24 @@ public class Parser {
             varDeclaration();
         }
 
+        if (currentMethod.getName().equals("main")) {
+            OpCodeBuffer.mainStart = OpCodeBuffer.pc;
+        }
+
+        currentMethod.setAddress(OpCodeBuffer.pc);
+        OpCodeBuffer.put(OpCode.ENTER);
+        OpCodeBuffer.put(currentMethod.getNumberOfParams());
+        OpCodeBuffer.put(symbolTable.numberOfLocals());
+
         block();
+
+        if (currentMethod.getType().getKind() == TypeKind.NONE) {
+            OpCodeBuffer.put(OpCode.EXIT);
+            OpCodeBuffer.put(OpCode.RETURN);
+        } else {
+            OpCodeBuffer.put(OpCode.TRAP);
+            OpCodeBuffer.put(1);
+        }
 
         symbolTable.closeScope();
 
@@ -208,17 +232,21 @@ public class Parser {
         return params;
     }
 
-    private Symbol designator() {
+    private Descriptor designator() {
         // identifier {"." identifier | "[" Expression "]"}
 
         Symbol symbol = null;
+        Descriptor descriptor = null;
 
         if (next(IDENTIFIER)) {
             symbol = symbolTable.findByName(nextToken.getString());
 
             if (symbol == null) {
                 error("failed to resolve typename " + nextToken.getString());
+                symbol = new Symbol();
             }
+
+            descriptor = new Descriptor(symbol);
         } else {
             error(IDENTIFIER, nextToken.getKind());
         }
@@ -240,6 +268,10 @@ public class Parser {
 
                             if (symbol == null) {
                                 error("identifier " + nextToken.getString() + " doesn't exist on type " + typeSymbol.getName());
+                            } else {
+                                OpCodeBuffer.load(descriptor);
+                                descriptor = new Descriptor(symbol);
+                                descriptor.setKind(DescriptorKind.FIELD);
                             }
                         }
                     }
@@ -251,16 +283,24 @@ public class Parser {
             } else {
                 check(LEFT_BRACKET);
 
-                Symbol expression = expression();
+                if (descriptor != null) {
+                    OpCodeBuffer.load(descriptor);
+                }
+
+                Descriptor expression = expression();
                 if (expression.getType().getKind() != TypeKind.INT) {
                     error("Can't use type " + expression.getType().getKind() + " as an array size.");
+                } else {
+                    OpCodeBuffer.load(expression);
+
+                    descriptor.setKind(DescriptorKind.ARRAY_ELEMENT);
                 }
 
                 check(RIGHT_BRACKET);
             }
         }
 
-        return symbol;
+        return descriptor;
     }
 
     private Type type() {
@@ -333,43 +373,46 @@ public class Parser {
         // ";"
 
         if (next(IDENTIFIER)) {
-            Symbol symbol = designator();
+            Descriptor designatorDescriptor = designator();
+            Symbol designator = designatorDescriptor.getSymbol();
 
             if (next(ASSIGN)) {
                 scan();
 
-                Symbol expression = expression();
+                Descriptor expression = expression();
 
-                if (symbol.getKind() != SymbolKind.VARIABLE) {
-                    error("Cannot assign to " + symbol.getKind());
+                if (designator.getKind() != SymbolKind.VARIABLE) {
+                    error("Cannot assign to " + designator.getKind());
                 }
 
                 boolean valid = true;
 
-                if (symbol.getType().getKind() != TypeKind.ARRAY) {
+                if (designator.getType().getKind() != TypeKind.ARRAY) {
                     if (expression.getType().getKind() != TypeKind.ARRAY) {
-                        if (symbol.getType().getKind() != expression.getType().getKind()) {
+                        if (designator.getType().getKind() != expression.getType().getKind()) {
                             valid = false;
                         }
                     } else {
-                        if (symbol.getType().getKind() != expression.getType().getArrayElementType().getKind()) {
+                        if (designator.getType().getKind() != expression.getType().getArrayElementType().getKind()) {
                             valid = false;
                         }
                     }
                 } else {
                     if (expression.getType().getKind() == TypeKind.ARRAY) {
-                        if (symbol.getType().getArrayElementType() != expression.getType().getArrayElementType()) {
+                        if (designator.getType().getArrayElementType() != expression.getType().getArrayElementType()) {
                             valid = false;
                         }
                     } else {
-                        if (symbol.getType().getArrayElementType().getKind() != expression.getType().getKind()) {
+                        if (designator.getType().getArrayElementType().getKind() != expression.getType().getKind()) {
                             valid = false;
                         }
                     }
                 }
 
                 if (!valid) {
-                    error("Cannot assign " + expression.getType() + " to " + symbol.getType());
+                    error("Cannot assign " + expression.getType() + " to " + designator.getType());
+                } else {
+                    OpCodeBuffer.assign(designatorDescriptor, expression);
                 }
 
                 check(SEMICOLON);
@@ -383,23 +426,34 @@ public class Parser {
                     next(NEW) ||
                     next(LEFT_PARENS)) {
 
-                    List<Symbol> params = actParams();
+                    List<Descriptor> params = actParams();
 
-                    if (symbol != null) {
-                        if (params.size() != symbol.getNumberOfParams()) {
-                            error("Method " + symbol.getName() + " accepts " + symbol.getNumberOfParams() + " parameters, but " + params.size() + " were provided");
+                    if (designator != null) {
+                        if (params.size() != designator.getNumberOfParams()) {
+                            error("Method " + designator.getName() + " accepts " + designator.getNumberOfParams() + " parameters, but " + params.size() + " were provided");
                         } else {
                             for (int i = 0; i < params.size(); i++) {
                                 TypeKind provided = params.get(i).getType().getKind();
 
-                                if (symbol.getLocals().get(i) == null) continue;
+                                if (designator.getLocals().get(i) == null) continue;
 
-                                TypeKind expected = symbol.getLocals().get(i).getType().getKind();
+                                TypeKind expected = designator.getLocals().get(i).getType().getKind();
                                 if (provided != expected) {
-                                    error("Method " + symbol.getName() + " parameter " + (i+1) + " should be of type " + expected + " but " + provided + " was provided.");
+                                    error("Method " + designator.getName() + " parameter " + (i+1) + " should be of type " + expected + " but " + provided + " was provided.");
                                 }
                             }
                         }
+                    }
+
+                    if (designator.getName().equals("len")) {
+                        OpCodeBuffer.put(OpCode.LENGTH);
+                    } else if (!designator.getName().equals("ctoi") && !designator.getName().equals("itoc")) {
+                        OpCodeBuffer.put(OpCode.CALL);
+                        OpCodeBuffer.put2(designator.getAddress());
+                    }
+
+                    if (designator.getType().getKind() != TypeKind.NONE) {
+                        OpCodeBuffer.put(OpCode.POP);
                     }
                 }
 
@@ -408,20 +462,20 @@ public class Parser {
             } else if (next(PLUS_PLUS)) {
                 scan();
 
-                if (symbol.getKind() != SymbolKind.VARIABLE) {
-                    error("Cannot assign to a " + symbol.getKind());
-                } else if (symbol.getType().getKind() != TypeKind.INT && (symbol.getType().getKind() == TypeKind.ARRAY && symbol.getType().getArrayElementType().getKind() != TypeKind.INT)) {
-                    error("Cannot increment a " + symbol.getType().getKind());
+                if (designator.getKind() != SymbolKind.VARIABLE) {
+                    error("Cannot assign to a " + designator.getKind());
+                } else if (designator.getType().getKind() != TypeKind.INT && (designator.getType().getKind() == TypeKind.ARRAY && designator.getType().getArrayElementType().getKind() != TypeKind.INT)) {
+                    error("Cannot increment a " + designator.getType().getKind());
                 }
 
                 check(SEMICOLON);
             } else {
                 check(MINUS_MINUS);
 
-                if (symbol.getKind() != SymbolKind.VARIABLE) {
-                    error("Cannot assign to a " + symbol.getKind());
-                } else if (symbol.getType().getKind() != TypeKind.INT && (symbol.getType().getKind() == TypeKind.ARRAY && symbol.getType().getArrayElementType().getKind() != TypeKind.INT)) {
-                    error("Cannot decrement a " + symbol.getType().getKind());
+                if (designator.getKind() != SymbolKind.VARIABLE) {
+                    error("Cannot assign to a " + designator.getKind());
+                } else if (designator.getType().getKind() != TypeKind.INT && (designator.getType().getKind() == TypeKind.ARRAY && designator.getType().getArrayElementType().getKind() != TypeKind.INT)) {
+                    error("Cannot decrement a " + designator.getType().getKind());
                 }
 
                 check(SEMICOLON);
@@ -434,10 +488,17 @@ public class Parser {
             }
 
             check(LEFT_PARENS);
-            condition();
+
+            Descriptor ifCondition = condition();
+
             check(RIGHT_PARENS);
 
+            OpCodeBuffer.falseJump(ifCondition);
+            ifCondition.getTrueLabel().here();
+
             statement();
+
+            ifCondition.getFalseLabel().here();
 
             if (next(ELSE)) {
                 scan();
@@ -450,13 +511,23 @@ public class Parser {
                 error("Cannot use while loops outside of methods.");
             }
 
+            Label whileTop = new Label();
+            whileTop.here();
+
             check(LEFT_PARENS);
-            condition();
+
+            Descriptor whileCondition = condition();
+
             check(RIGHT_PARENS);
+
+            OpCodeBuffer.falseJump(whileCondition);
 
             insideLoop = true;
             statement();
             insideLoop = false;
+
+            OpCodeBuffer.jump(whileTop);
+            whileCondition.getFalseLabel().here();
         } else if (next(BREAK)) {
             scan();
 
@@ -483,7 +554,7 @@ public class Parser {
                 next(NEW) ||
                 next(LEFT_PARENS)) {
 
-                Symbol expression = expression();
+                Descriptor expression = expression();
 
                 if (currentMethod != null) {
                     if (currentMethod.getType().getKind() != TypeKind.NONE) {
@@ -492,6 +563,10 @@ public class Parser {
                         if (currentMethod.getType().getKind() != expression.getType().getKind()) {
                             error("Return value of type " + currentMethod.getType().getKind() + " expected, got " + expression.getType().getKind());
                         }
+
+                        OpCodeBuffer.load(expression);
+                        OpCodeBuffer.put(OpCode.EXIT);
+                        OpCodeBuffer.put(OpCode.RETURN);
                     }
                 }
             }
@@ -501,9 +576,11 @@ public class Parser {
             scan();
             check(LEFT_PARENS);
 
-            Symbol designator = designator();
+            Symbol designator = designator().getSymbol();
             if (designator.getType().getKind() != TypeKind.INT && designator.getType().getKind() != TypeKind.CHAR) {
                 error("Can't read " + designator.getType().getKind() + " from standard input.");
+            } else {
+                OpCodeBuffer.put(designator.getType().getKind() == TypeKind.INT ? OpCode.READ : OpCode.BREAD);
             }
 
             check(RIGHT_PARENS);
@@ -512,9 +589,11 @@ public class Parser {
             scan();
             check(LEFT_PARENS);
 
-            Symbol expression = expression();
+            Descriptor expression = expression();
             if (expression.getType().getKind() != TypeKind.INT && expression.getType().getKind() != TypeKind.CHAR) {
                 error("Can't output " + expression.getType().getKind() + " to standard output.");
+            } else {
+                OpCodeBuffer.put(expression.getType().getKind() == TypeKind.INT ? OpCode.PRINT : OpCode.BPRINT);
             }
 
             if (next(COMMA)) {
@@ -683,32 +762,47 @@ public class Parser {
         }
     }
 
-    private void condition() {
+    private Descriptor condition() {
         // conditionTerm {"||" conditionTerm}
 
-        conditionTerm();
+        Descriptor left = conditionTerm();
 
         while (next(OR)) {
+            OpCodeBuffer.trueJump(left);
+            left.getFalseLabel().here();
+
             scan();
-            conditionTerm();
+
+            Descriptor right = conditionTerm();
+
+            left.setCondition(right.getCondition());
+            left.setFalseLabel(right.getFalseLabel());
         }
+
+        return left;
     }
 
-    private void conditionTerm() {
+    private Descriptor conditionTerm() {
         // conditionFact {"&&" conditionFact}
 
-        conditionFact();
+        Descriptor left = conditionFact();
 
         while (next(AND)) {
+            OpCodeBuffer.falseJump(left);
+
             scan();
-            conditionFact();
+
+            Descriptor right = conditionFact();
+            left.setCondition(right.getCondition());
         }
+
+        return left;
     }
 
-    private void conditionFact() {
+    private Descriptor conditionFact() {
         // expression relOp expression
 
-        Symbol e1 = expression();
+        Descriptor e1 = expression();
 
         if (e1 != null) {
             Type t = e1.getType().getKind() == TypeKind.ARRAY ? e1.getType().getArrayElementType() : e1.getType();
@@ -717,9 +811,11 @@ public class Parser {
             }
         }
 
+        Descriptor descriptor = new Descriptor(nextToken.getKind());
+
         relOp();
 
-        Symbol e2 = expression();
+        Descriptor e2 = expression();
 
         if (e2 != null) {
             Type t = e2.getType().getKind() == TypeKind.ARRAY ? e2.getType().getArrayElementType() : e2.getType();
@@ -727,16 +823,18 @@ public class Parser {
                 error("Only ints and chars can be compared.");
             }
         }
+
+        return descriptor;
     }
 
-    private Symbol expression() {
+    private Descriptor expression() {
         // ["-"] term {addOp term}
 
         if (next(MINUS)) {
             scan();
         }
 
-        Symbol t1 = term();
+        Descriptor t1 = term();
 
         if (t1 != null && (next(PLUS) || next(MINUS))) {
             Type t = t1.getType().getKind() == TypeKind.ARRAY ? t1.getType().getArrayElementType() : t1.getType();
@@ -746,9 +844,11 @@ public class Parser {
         }
 
         while (next(PLUS) || next(MINUS)) {
+            TokenKind op = nextToken.getKind();
+
             addOp();
 
-            Symbol t2 = term();
+            Descriptor t2 = term();
 
             if (t2 != null) {
                 Type t = t2.getType().getKind() == TypeKind.ARRAY ? t2.getType().getArrayElementType() : t2.getType();
@@ -756,15 +856,18 @@ public class Parser {
                     error("Can't do math with " + t.getKind() + ", math can only be done with ints.");
                 }
             }
+
+            if (op == PLUS) OpCodeBuffer.put(OpCode.ADD);
+            else OpCodeBuffer.put(OpCode.SUB);
         }
 
         return t1;
     }
 
-    private Symbol term() {
+    private Descriptor term() {
         // factor {mulOp factor}
 
-        Symbol f1 = factor();
+        Descriptor f1 = factor();
 
         if (f1 != null && (next(TIMES) || next(SLASH) || next(MODULO))) {
             Type t = f1.getType().getKind() == TypeKind.ARRAY ? f1.getType().getArrayElementType() : f1.getType();
@@ -774,9 +877,11 @@ public class Parser {
         }
 
         while (next(TIMES) || next(SLASH) || next(MODULO)) {
+            TokenKind op = nextToken.getKind();
+
             mulOp();
 
-            Symbol f2 = factor();
+            Descriptor f2 = factor();
 
             if (f2 != null) {
                 Type t = f2.getType().getKind() == TypeKind.ARRAY ? f2.getType().getArrayElementType() : f2.getType();
@@ -784,18 +889,26 @@ public class Parser {
                     error("Can't do math with " + t.getKind() + ", math can only be done with ints.");
                 }
             }
+
+            if (op == TIMES) OpCodeBuffer.put(OpCode.MUL);
+            else if (op == SLASH) OpCodeBuffer.put(OpCode.DIV);
+            else OpCodeBuffer.put(OpCode.REM);
         }
 
         return f1;
     }
 
-    private Symbol factor() {
+    private Descriptor factor() {
         // designator ["(" [actParams] ")"] | number | charConst | "new" identifier ["[" expression "]"] | "(" expression ")"
 
         Symbol symbol = new Symbol();
+        symbol.setType(new Type(TypeKind.NONE));
+
+        Descriptor descriptor = null;
 
         if (next(IDENTIFIER)) {
-            symbol = designator();
+            descriptor = designator();
+            symbol = descriptor.getSymbol();
 
             if (next(LEFT_PARENS)) {
                 scan();
@@ -811,7 +924,7 @@ public class Parser {
                     next(NEW) ||
                     next(LEFT_PARENS)) {
 
-                    List<Symbol> params = actParams();
+                    List<Descriptor> params = actParams();
 
                     if (symbol != null) {
                         if (params.size() != symbol.getNumberOfParams()) {
@@ -829,20 +942,31 @@ public class Parser {
                             }
                         }
                     }
+
+                    if (symbol.getName().equals("len")) {
+                        OpCodeBuffer.put(OpCode.LENGTH);
+                    } else if (!symbol.getName().equals("ctoi") && !symbol.getName().equals("itoc")) {
+                        OpCodeBuffer.put(OpCode.CALL);
+                        OpCodeBuffer.put2(symbol.getAddress());
+                    }
                 }
 
                 check(RIGHT_PARENS);
             }
         } else if (next(NUMBER)) {
-            scan();
-
             symbol.setType(new Type(TypeKind.INT));
             symbol.setKind(SymbolKind.CONSTANT);
-        } else if (next(CHAR)) {
-            scan();
+            symbol.setValue(nextToken.getValue());
+            descriptor = new Descriptor(symbol);
 
+            scan();
+        } else if (next(CHAR)) {
             symbol.setType(new Type(TypeKind.CHAR));
             symbol.setKind(SymbolKind.CONSTANT);
+            symbol.setValue(nextToken.getValue());
+            descriptor = new Descriptor(symbol);
+
+            scan();
         } else if (next(NEW)) {
             scan();
 
@@ -860,28 +984,39 @@ public class Parser {
             if (next(LEFT_BRACKET)) {
                 scan();
 
-                Symbol expression = expression();
-                if (expression.getType().getKind() != TypeKind.INT) {
-                    error("Can't use type " + expression.getType().getKind() + " as an array size.");
+                Descriptor size = expression();
+                if (size.getType().getKind() != TypeKind.INT) {
+                    error("Can't use type " + size.getType().getKind() + " as an array size.");
                 }
 
+                OpCodeBuffer.put(OpCode.NEW_ARRAY);
+                OpCodeBuffer.put(symbol.getType().getSizeof());
+
                 check(RIGHT_BRACKET);
+            } else {
+                OpCodeBuffer.put(OpCode.NEW);
+                OpCodeBuffer.put4(symbol.getType().getFields().size());
             }
+
+            descriptor = new Descriptor(symbol);
         } else if (next(LEFT_PARENS)) {
             scan();
-            symbol = expression();
+            descriptor = expression();
             check(RIGHT_PARENS);
         } else {
             error("unexpected token: " + nextToken.getKind());
         }
 
-        return symbol;
+        if (descriptor != null) OpCodeBuffer.load(descriptor);
+        else return new Descriptor(new Symbol());
+
+        return descriptor;
     }
 
-    private List<Symbol> actParams() {
+    private List<Descriptor> actParams() {
         // expression {"," expression}
 
-        List<Symbol> symbols = new LinkedList<>();
+        List<Descriptor> symbols = new LinkedList<>();
 
         symbols.add(expression());
 

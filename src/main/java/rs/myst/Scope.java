@@ -1,14 +1,16 @@
 package rs.myst;
 
 import lombok.Getter;
+import lombok.Setter;
 
 import java.util.LinkedList;
 
 @Getter
+@Setter
 public class Scope {
     private final LinkedList<Symbol> nodes = new LinkedList<>();
 
-    private int numberOfVars = 0;
+    private boolean isLoop;
 
     public void addNode(Symbol node) {
         nodes.addLast(node);
@@ -24,9 +26,5 @@ public class Scope {
         }
 
         return null;
-    }
-
-    public int getNextAddress() {
-        return numberOfVars++;
     }
 }

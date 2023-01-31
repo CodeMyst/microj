@@ -23,7 +23,7 @@ program Eratos
 	void main()
 		int i;
 	{
-		read(max);
+		max = 5;
 		npp = 0;
 		sieve = new char[max+1];
 		i = 0;

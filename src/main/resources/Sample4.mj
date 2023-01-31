@@ -8,5 +8,7 @@ program P
         arr[0] = 5;
 
         a = arr[0];
+
+        print(a);
     }
 }

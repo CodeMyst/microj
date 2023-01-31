@@ -1,9 +1,19 @@
 package rs.myst;
 
+import lombok.Getter;
+import lombok.Setter;
+
 import java.util.LinkedList;
 
+@Getter
+@Setter
 public class SymbolTable {
     private final LinkedList<Scope> scopes = new LinkedList<>();
+
+    private int nextGlobalAddress = 0;
+    private int nextLocalAddress = 0;
+
+    private boolean nextScopeIsLoop;
 
     public SymbolTable() {
         openScope();
@@ -28,7 +38,7 @@ public class SymbolTable {
         final Scope scope = scopes.getLast();
 
         if (symbol.getKind() == SymbolKind.VARIABLE) {
-            symbol.setAddress(scope.getNextAddress());
+            symbol.setAddress(symbol.getScopeType() == ScopeType.GLOBAL ? nextGlobalAddress++ : nextLocalAddress++);
         }
 
         symbol.setScopeType(scopes.size() == 2 ? ScopeType.GLOBAL : ScopeType.LOCAL);
@@ -47,8 +57,15 @@ public class SymbolTable {
         return null;
     }
 
+    public int numberOfLocals() {
+        return scopes.getLast().getNodes().size();
+    }
+
     public void openScope() {
-        scopes.addLast(new Scope());
+        Scope newS = new Scope();
+        newS.setLoop(nextScopeIsLoop);
+        nextScopeIsLoop = false;
+        scopes.addLast(newS);
     }
 
     public void closeScope() {

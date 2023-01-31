@@ -3,8 +3,8 @@ program test
 	void main()
 		int i, j;
 	{
-		i = 100; j = 0;
-		print(i/j);
+		i = 2;
+		j = 5;
+		print(i * j);
 	}
-
 }

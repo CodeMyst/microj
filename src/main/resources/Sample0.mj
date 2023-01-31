@@ -1,13 +1,17 @@
 program P
-    final int a = 5;
 {
 	void main()
 		int i;
 	{
+		print('[');
+		print(' ');
 		i = 0;
 		while (i < 5) {
-			print(i);
 			i = i + 1;
+			print(i * 2);
+			if (i != 5) print(',');
+			print(' ');
 		}
+		print(']');
 	}
 }
