@@ -1,0 +1,25 @@
+program Fib
+{
+    int fib(int n)
+    {
+        if (n <= 1)
+        {
+            return n;
+        }
+
+        return fib(n - 1) + fib(n - 2);
+    }
+
+    void main()
+        int i, f;
+    {
+        while (i < 20)
+        {
+            f = fib(i);
+            print(f);
+            print(' ');
+
+            i = i + 1;
+        }
+    }
+}

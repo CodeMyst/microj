@@ -50,11 +50,13 @@ public class OpCodeBuffer {
     }
 
     public static int get2(int address) {
-        return (buffer[address] << 8) + buffer[address + 1];
+//        return (buffer[address] << 8) + buffer[address + 1];
+        return (buffer[address] << 8) & 0xff00 | (buffer[address + 1] & 0xff);
     }
 
     public static int get4(int address) {
-        return (get2(address) << 16) + get2(address + 2);
+//        return (get2(address) << 16) + get2(address + 2);
+        return (get2(address) << 16) & 0xffff0000 | (get2(address + 2) & 0xffff);
     }
 
     public static void load(Descriptor d) {

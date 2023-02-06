@@ -557,7 +557,7 @@ public class Parser {
                 Descriptor expression = expression();
 
                 if (currentMethod != null) {
-                    if (currentMethod.getType().getKind() != TypeKind.NONE) {
+                    if (currentMethod.getType().getKind() == TypeKind.NONE) {
                         error("Return value not expected, method " + currentMethod.getName() + " returns void.");
                     } else {
                         if (currentMethod.getType().getKind() != expression.getType().getKind()) {

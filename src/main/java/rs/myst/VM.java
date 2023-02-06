@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Scanner;
 
 public class VM {
     private static int pc;
@@ -23,6 +24,7 @@ public class VM {
     private static final int[]  estack = new int[ESTACK_SIZE_WORDS];
     private static final int[]  fstack = new int[FSTACK_SIZE_WORDS];
 
+    private static Scanner input;
 
     public static void runFromFile(String filePath) throws IOException {
         File inputFile = new File(filePath);
@@ -46,6 +48,8 @@ public class VM {
 
         pc = getWord(2);
         getWord(4);
+
+        input = new Scanner(System.in);
 
         execute();
     }
@@ -240,6 +244,12 @@ public class VM {
                     epush(epop() + epop());
                     break;
 
+                case SUB:
+                    var v1 = epop();
+                    var v2 = epop();
+                    epush(v2 - v1);
+                    break;
+
                 case DIV:
                     epush(epop() / epop());
                     break;
@@ -298,6 +308,14 @@ public class VM {
 
                 case PRINT:
                     System.out.print(epop());
+                    break;
+
+                case READ:
+                    epush(input.nextInt());
+                    break;
+
+                case BREAD:
+                    epush(input.nextByte());
                     break;
 
                 case CALL:
